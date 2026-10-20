@@ -1,6 +1,6 @@
 import type { World } from "#core/ecs/index.ts";
 import { Aim, PlayerTag, Position, Skills } from "../components.ts";
-import { input } from "../input.ts";
+import { actions } from "../input.ts";
 import { playerEntity, runCtx } from "../query.ts";
 import { SKILLS } from "../skills.ts";
 
@@ -19,7 +19,7 @@ export function skillsSystem(world: World, dt: number): void {
 
   const run = runCtx(world);
   if (run.over || run.won) return;
-  if (!input.consume("KeyE")) return;
+  if (!actions.pressed("skill")) return;
 
   for (const slot of slots.list) {
     if (slot.cd > 0) continue;

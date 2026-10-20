@@ -1,44 +1,82 @@
-// 检查 src/core 的依赖方向：下层只被消费，不能反向 import 上层。
-// 这是原来用 4 个 npm 包 physical 保证的那条约束，现在用一条脚本守着。
+// 依赖方向检查：分层只能向下依赖，反向 import 直接失败。
+// 1) src 顶层分层：core / content / engine / game / render / ui
+// 2) core 内部子层：kernel / db / ecs / agent
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const CORE = fileURLToPath(new URL("../src/core", import.meta.url));
+const SRC = fileURLToPath(new URL("../src", import.meta.url));
+const CORE = path.join(SRC, "core");
 
-/** 允许的依赖：key 可以 import value 里的层 */
-const ALLOWED = {
+const TOP_ALLOWED = {
+  core: [],
+  content: ["core"],
+  engine: ["core", "content"],
+  // TODO: game.ts 是编排层（装配 pixi），拆分到 src/app 后要收紧成 ["core","content","engine"]
+  game: ["core", "content", "engine", "render"],
+  render: ["core", "content", "engine", "game"],
+  // ui 是最上层；开发页面允许读 render 的只读工具
+  ui: ["core", "content", "engine", "game", "render"],
+};
+
+const CORE_ALLOWED = {
   kernel: [],
   db: ["kernel"],
   ecs: ["kernel", "db"],
   agent: ["kernel"],
 };
 
-const LAYERS = Object.keys(ALLOWED);
-
 function walk(dir, out = []) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) walk(full, out);
-    else if (full.endsWith(".ts")) out.push(full);
+    else if (full.endsWith(".ts") || full.endsWith(".tsx")) out.push(full);
   }
   return out;
 }
 
-function layerOf(file) {
-  const rel = path.relative(CORE, file);
-  return rel.split(path.sep)[0];
+const topOf = (file) => path.relative(SRC, file).split(path.sep)[0];
+const coreLayerOf = (file) => path.relative(CORE, file).split(path.sep)[0];
+
+function resolveSpec(file, spec) {
+  if (spec.startsWith("#core/")) return "core";
+  if (spec.startsWith("#content/")) return "content";
+  if (!spec.startsWith(".")) return null;
+  const resolved = path.resolve(path.dirname(file), spec);
+  if (!resolved.startsWith(SRC)) return null;
+  return topOf(resolved);
 }
 
 const violations = [];
 const edges = new Map();
 
-for (const file of walk(CORE)) {
-  const from = layerOf(file);
-  if (!LAYERS.includes(from)) continue;
+for (const file of walk(SRC)) {
+  const from = topOf(file);
+  if (!(from in TOP_ALLOWED)) continue;
+
   const source = fs.readFileSync(file, "utf8");
   const regex = /from\s+["']([^"']+)["']/g;
   let match;
+  while ((match = regex.exec(source)) !== null) {
+    const spec = match[1];
+    const target = resolveSpec(file, spec);
+    if (!target || target === from || !(target in TOP_ALLOWED)) continue;
+
+    const key = `${from} → ${target}`;
+    edges.set(key, (edges.get(key) ?? 0) + 1);
+
+    if (!TOP_ALLOWED[from].includes(target)) {
+      const line = source.slice(0, match.index).split("\n").length;
+      violations.push(`${path.relative(process.cwd(), file)}:${line}  ${from} 不能依赖 ${target}（${spec}）`);
+    }
+  }
+
+  // core 内部子层
+  if (from !== "core") continue;
+  const sub = coreLayerOf(file);
+  if (!(sub in CORE_ALLOWED)) continue;
+
+  regex.lastIndex = 0;
   while ((match = regex.exec(source)) !== null) {
     const spec = match[1];
     let target = null;
@@ -49,25 +87,24 @@ for (const file of walk(CORE)) {
     } else if (spec.startsWith("#core/")) {
       target = spec.slice("#core/".length).split("/")[0];
     }
-    if (!target || !LAYERS.includes(target) || target === from) continue;
+    if (!target || !(target in CORE_ALLOWED) || target === sub) continue;
 
-    const key = `${from} → ${target}`;
-    if (!edges.has(key)) edges.set(key, 0);
-    edges.set(key, edges.get(key) + 1);
+    const key = `core/${sub} → core/${target}`;
+    edges.set(key, (edges.get(key) ?? 0) + 1);
 
-    if (!ALLOWED[from]?.includes(target)) {
+    if (!CORE_ALLOWED[sub].includes(target)) {
       const line = source.slice(0, match.index).split("\n").length;
-      violations.push(`${path.relative(process.cwd(), file)}:${line}  ${from} 不能依赖 ${target}（${spec}）`);
+      violations.push(`${path.relative(process.cwd(), file)}:${line}  core/${sub} 不能依赖 core/${target}（${spec}）`);
     }
   }
 }
 
 const summary = [...edges.entries()].map(([k, n]) => `${k} ×${n}`).join("  ");
-console.log("core 依赖图：", summary || "(无跨层依赖)");
+console.log("依赖图：", summary || "(无跨层依赖)");
 
 if (violations.length > 0) {
   console.error("\n依赖方向违规：");
   for (const v of violations) console.error("  ✗ " + v);
   process.exit(1);
 }
-console.log("✓ 依赖方向正确：kernel ← db ← ecs，kernel ← agent");
+console.log("✓ 依赖方向正确：core ← content ← engine ← game ← render/ui");

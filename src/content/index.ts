@@ -1,5 +1,5 @@
 import { Database } from "#core/db/index.ts";
-import { TEMPLATES, type RoomTemplate } from "../game/gen/templateData.ts";
+import { TEMPLATES, type RoomTemplate } from "./templates.ts";
 import { AffixTable, AnimationTable, EnemyTable, RoomTemplates, StatusTable, WeaponTable } from "./schema.ts";
 
 import weaponsJson from "../../content/weapons.json" with { type: "json" };

@@ -1,4 +1,5 @@
-import type { Rect } from "../rooms.ts";
+/** 矩形（墙、门、掩体都用它） */
+export type Rect = { x: number; y: number; w: number; h: number };
 
 export type Slot = { x: number; y: number; kind: "enemy" | "barrel" | "crystal" };
 
@@ -69,4 +70,3 @@ export const TEMPLATES: Record<string, RoomTemplate> = {
     ],
   },
 };
-

@@ -1,7 +1,7 @@
 import type { Entity, World } from "#core/ecs/index.ts";
 import { Aim, Loadout, Pickup, Position, type WeaponSlot } from "../components.ts";
 import { allAffixes, allWeapons, getWeapon } from "#content/index.ts";
-import { input } from "../input.ts";
+import { actions, input } from "../input.ts";
 import { effects } from "../combat.ts";
 import { playerEntity, runCtx } from "../query.ts";
 import { fireWeapon } from "../weapons.ts";
@@ -48,15 +48,15 @@ export function weaponsSystem(world: World, dt: number): void {
   if (run.over || run.won) return;
 
   // 切枪：Q 轮换，1/2 直接选槽
-  const pick1 = input.consume("Digit1");
-  const pick2 = input.consume("Digit2");
+  const pick1 = actions.pressed("slot1");
+  const pick2 = actions.pressed("slot2");
   if (pick1 && lo.slots.length > 0 && lo.active !== 0) {
     lo.active = 0;
     lo.cd = Math.max(lo.cd, 0.2);
   } else if (pick2 && lo.slots.length > 1 && lo.active !== 1) {
     lo.active = 1;
     lo.cd = Math.max(lo.cd, 0.2);
-  } else if (input.consume("KeyQ") && lo.slots.length > 1) {
+  } else if (actions.pressed("swap") && lo.slots.length > 1) {
     lo.active = (lo.active + 1) % lo.slots.length;
     lo.cd = Math.max(lo.cd, 0.2);
   }

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { AssetBrowser } from "./AssetBrowser";
 import { SpriteGallery } from "./SpriteGallery";
 
 type TableInfo = { key: string; fields: string[]; rows: number };
@@ -241,6 +242,7 @@ export function ContentEditor() {
           </div>
         )}
 
+        <AssetBrowser />
         <SpriteGallery />
       </div>
     </div>

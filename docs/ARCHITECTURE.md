@@ -103,8 +103,8 @@
 
 ### P1 输入映射（engine/inputmap）
 
-`content/actions.json`：`{ "move.up": ["KeyW", "ArrowUp"], "fire": ["Mouse0"] }`。
-系统只写 `input.action("move.up")`，物理键在映射层。
+`content/actions.json`：`{ "move.up": ["KeyW", "ArrowUp"], "dash": ["Space"] }`。
+系统只写 `actions.down("move.up")` / `actions.pressed("dash")`，物理键在映射层。
 
 ### P2 音频（engine/audio）
 

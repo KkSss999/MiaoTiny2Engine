@@ -3,8 +3,8 @@ import type { Dir, RoomType } from "./floor.ts";
 import type { Rng } from "#core/kernel/index.ts";
 import { getTemplate } from "#content/index.ts";
 
-export type { Slot, RoomTemplate } from "./templateData.ts";
-export { TEMPLATES } from "./templateData.ts";
+export type { Slot, RoomTemplate } from "#content/templates.ts";
+export { TEMPLATES } from "#content/templates.ts";
 
 export type RoomBuild = { walls: Rect[]; spawns: Spawn[]; props: PropSpawn[] };
 

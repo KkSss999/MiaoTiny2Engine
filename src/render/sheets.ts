@@ -1,11 +1,15 @@
 import { Container, Graphics, Rectangle, RenderTexture, Texture, type Renderer } from "pixi.js";
+import { getManifest, type SheetEntry } from "../engine/assets/index.ts";
+import { loadImageTexture } from "./assets.ts";
+import { SHEET_PLACEHOLDERS, drawMissingBox } from "./placeholders.ts";
 
 /**
  * 网格图集（sprite sheet）。
  *
  * 开源项目通行做法：一张图按 rows × cols 均分，帧号 = row * cols + col。
- * 现在没有美术资源，用程序化 draw 逐帧画，烘成一张大图后再切出子纹理——
- * 换成真实 atlas 时只要填 image，draw 丢掉。
+ * 帧数与网格来自 content/manifest.json；现在没有美术资源，用
+ * SHEET_PLACEHOLDERS 逐帧画，烘成一张大图后再切出子纹理——
+ * 换成真实 atlas 时只要 manifest 里填 image，占位绘制自然不再用到。
  */
 export type SheetDef = {
   id: string;
@@ -13,27 +17,29 @@ export type SheetDef = {
   frameHeight: number;
   cols: number;
   rows: number;
-  /** 有真实图集时填图片地址；填了就不再用 draw */
-  image?: string;
+  /** 有真实图集时填图片地址；填了就不再用占位绘制 */
+  image?: string | null;
   draw?: (g: Graphics, frame: number) => void;
 };
 
-/** 程序化占位图集：接美术前提供真实的帧数据 */
-export const SHEETS: Record<string, SheetDef> = {
-  // 近战怪的心跳脉冲：半径 14→18→20→18
-  pulse: {
-    id: "pulse",
-    frameWidth: 48,
-    frameHeight: 48,
-    cols: 4,
-    rows: 1,
-    draw: (g, index) => {
-      const r = [14, 17, 20, 17][index] ?? 14;
-      const glow = [0x8a2530, 0xb52a38, 0xd7263d, 0xb52a38][index] ?? 0x8a2530;
-      g.circle(0, 0, r).fill(0x2a1c24).stroke({ width: 3, color: glow });
-    },
-  },
-};
+/** 图集定义由清单派生（帧数 = cols × rows），逐帧画什么来自 placeholders.ts */
+export const SHEETS: Record<string, SheetDef> = buildSheetTable();
+
+function buildSheetTable(): Record<string, SheetDef> {
+  const table: Record<string, SheetDef> = {};
+  for (const entry of getManifest().sheets) {
+    table[entry.id] = {
+      id: entry.id,
+      frameWidth: entry.frameWidth,
+      frameHeight: entry.frameHeight,
+      cols: entry.cols,
+      rows: entry.rows,
+      image: entry.image ?? null,
+      draw: SHEET_PLACEHOLDERS[entry.id],
+    };
+  }
+  return table;
+}
 
 type Sheet = { def: SheetDef; frames: Texture[] };
 const sheets = new Map<string, Sheet>();
@@ -43,49 +49,63 @@ export function prepareSheets(renderer: Renderer): void {
   if (prepared) return;
   prepared = true;
 
-  for (const def of Object.values(SHEETS)) {
-    if (def.image) continue; // 真实图集走 Assets 加载，暂未实现
+  for (const entry of getManifest().sheets) {
+    if (sheets.has(entry.id)) continue;
 
-    const total = def.cols * def.rows;
-    const stage = new Container();
+    const total = entry.cols * entry.rows;
+    const image = entry.image ? loadImageTexture(entry.image) : null;
+    const frames = image ? sliceAtlas(image, entry, total) : bakePlaceholders(renderer, entry, total);
 
-    for (let i = 0; i < total; i++) {
-      const col = i % def.cols;
-      const row = Math.floor(i / def.cols);
-      const cell = new Graphics();
-      def.draw?.(cell, i);
-      cell.position.set(col * def.frameWidth + def.frameWidth / 2, row * def.frameHeight + def.frameHeight / 2);
-      stage.addChild(cell);
-    }
-
-    // 撑满整张画布的透明底，保证生成的纹理尺寸精确等于网格
-    const bounds = new Graphics();
-    bounds.rect(0, 0, def.cols * def.frameWidth, def.rows * def.frameHeight).fill({ color: 0x000000, alpha: 0 });
-    stage.addChildAt(bounds, 0);
-
-    const texture =
-      renderer.generateTexture({
-        target: stage,
-        resolution: 1,
-        antialias: false,
-        textureSourceOptions: { scaleMode: "nearest", autoGenerateMipmaps: false },
-      }) ?? RenderTexture.create({ width: def.cols * def.frameWidth, height: def.rows * def.frameHeight });
-
-    const frames: Texture[] = [];
-    for (let i = 0; i < total; i++) {
-      const col = i % def.cols;
-      const row = Math.floor(i / def.cols);
-      frames.push(
-        new Texture({
-          source: texture.source,
-          frame: new Rectangle(col * def.frameWidth, row * def.frameHeight, def.frameWidth, def.frameHeight),
-        }),
-      );
-    }
-
-    stage.destroy({ children: true });
-    sheets.set(def.id, { def, frames });
+    sheets.set(entry.id, { def: SHEETS[entry.id], frames });
   }
+}
+
+/** 真实图集：一张图按网格切成 total 帧 */
+function sliceAtlas(atlas: Texture, entry: SheetEntry, total: number): Texture[] {
+  const frames: Texture[] = [];
+  for (let i = 0; i < total; i++) {
+    const col = i % entry.cols;
+    const row = Math.floor(i / entry.cols);
+    frames.push(
+      new Texture({
+        source: atlas.source,
+        frame: new Rectangle(col * entry.frameWidth, row * entry.frameHeight, entry.frameWidth, entry.frameHeight),
+      }),
+    );
+  }
+  return frames;
+}
+
+/** 没图：逐帧画占位图，烘成整张网格图再切帧 */
+function bakePlaceholders(renderer: Renderer, entry: SheetEntry, total: number): Texture[] {
+  const draw = SHEET_PLACEHOLDERS[entry.id] ?? drawMissingBox;
+  const stage = new Container();
+
+  for (let i = 0; i < total; i++) {
+    const col = i % entry.cols;
+    const row = Math.floor(i / entry.cols);
+    const cell = new Graphics();
+    draw(cell, i);
+    cell.position.set(col * entry.frameWidth + entry.frameWidth / 2, row * entry.frameHeight + entry.frameHeight / 2);
+    stage.addChild(cell);
+  }
+
+  // 撑满整张画布的透明底，保证生成的纹理尺寸精确等于网格
+  const bounds = new Graphics();
+  bounds.rect(0, 0, entry.cols * entry.frameWidth, entry.rows * entry.frameHeight).fill({ color: 0x000000, alpha: 0 });
+  stage.addChildAt(bounds, 0);
+
+  const texture =
+    renderer.generateTexture({
+      target: stage,
+      resolution: 1,
+      antialias: false,
+      textureSourceOptions: { scaleMode: "nearest", autoGenerateMipmaps: false },
+    }) ?? RenderTexture.create({ width: entry.cols * entry.frameWidth, height: entry.rows * entry.frameHeight });
+
+  stage.destroy({ children: true });
+
+  return sliceAtlas(texture, entry, total);
 }
 
 export function getSheetFrame(sheetId: string, index: number): Texture | null {

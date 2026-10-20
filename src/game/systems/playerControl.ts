@@ -2,7 +2,7 @@ import type { World } from "#core/ecs/index.ts";
 import { fire, is, step } from "#core/agent/index.ts";
 import { Aim, Brain, EnemyTag, PlayerTag, Position } from "../components.ts";
 import { clamp, moveWithWalls, playerEntity, roomCtx, runCtx } from "../combat.ts";
-import { input } from "../input.ts";
+import { actions, input } from "../input.ts";
 import { DEBUG, VIEW, type DebugCtx, type ViewCtx } from "../resources.ts";
 import { ROOM_H, ROOM_W } from "../rooms.ts";
 import { PLAYER_FSM, type PlayerCtx } from "../ai/playerAi.ts";
@@ -57,17 +57,15 @@ export function playerControlSystem(w: World, dt: number): void {
     mx = forced === "KeyD" ? 1 : forced === "KeyA" ? -1 : 0;
     my = forced === "KeyS" ? 1 : forced === "KeyW" ? -1 : 0;
   } else {
-    if (input.isDown("KeyW") || input.isDown("ArrowUp")) my -= 1;
-    if (input.isDown("KeyS") || input.isDown("ArrowDown")) my += 1;
-    if (input.isDown("KeyA") || input.isDown("ArrowLeft")) mx -= 1;
-    if (input.isDown("KeyD") || input.isDown("ArrowRight")) mx += 1;
+    mx = actions.axis("move.left", "move.right");
+    my = actions.axis("move.up", "move.down");
   }
   const len = Math.hypot(mx, my) || 1;
   mx /= len;
   my /= len;
 
   // 冲刺：充能/冷却由系统管，位移由状态机管
-  if (input.consume("Space") && pt.dashCd <= 0 && pt.dashes > 0 && !is(brain, "dash")) {
+  if (actions.pressed("dash") && pt.dashCd <= 0 && pt.dashes > 0 && !is(brain, "dash")) {
     pt.dashes--;
     pt.dashCd = pt.race === "human" ? 0.35 : 0.7;
     pt.invuln = Math.max(pt.invuln, 0.18);

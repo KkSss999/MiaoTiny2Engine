@@ -1,10 +1,23 @@
 import { InputState } from "#core/kernel/index.ts";
+import { InputActions, type ActionMap } from "../engine/inputmap/index.ts";
+import actionsJson from "../../content/actions.json" with { type: "json" };
 
 /**
- * 全局输入状态。键位含义由各系统自己解释（移动、开火、技能……），
- * 这里只负责把浏览器事件翻译成状态。
+ * 全局输入状态。这里只负责把浏览器事件翻译成"按下了什么"，
+ * 键位含义交给 actions（内容数据 content/actions.json）。
  */
 export const input = new InputState();
+
+/** 动作 → 物理键（KeyboardEvent.code[]），数据在 content/actions.json */
+export const ACTIONS_MAP: ActionMap = actionsJson;
+
+/**
+ * 玩法系统只认 action 名：改键 / 手柄 / 多平台都不用动系统代码。
+ *
+ * fire 仍用 input.down（鼠标左键由 pointerdown 直接置位，不走键码映射），
+ * 映射表里的 "fire": ["Mouse0"] 只是占位，不参与判定。
+ */
+export const actions = new InputActions(input, ACTIONS_MAP);
 
 export function attachInput(canvas: HTMLCanvasElement): () => void {
   const kd = (e: KeyboardEvent) => {

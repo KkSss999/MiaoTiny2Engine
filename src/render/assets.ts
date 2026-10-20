@@ -1,162 +1,42 @@
 import { Container, Graphics, Sprite, Texture, type Renderer } from "pixi.js";
+import { getManifest } from "../engine/assets/index.ts";
+import { PLACEHOLDERS, drawMissingBox, type PlaceholderDraw } from "./placeholders.ts";
 
-export type SpriteId =
-  | "player.human"
-  | "player.undead"
-  | "enemy.melee"
-  | "enemy.turret"
-  | "enemy.sentry"
-  | "enemy.charger"
-  | "enemy.boss"
-  | "prop.barrel"
-  | "prop.crystal"
-  | "bullet.friendly"
-  | "bullet.hostile"
-  | "weapon.gun"
-  | "weapon.melee"
-  | "weapon.spell"
-  | "weapon.totem"
-  | "pickup.weapon"
-  | "fx.spark"
-  | "fx.totem"
-  | "debug.box";
+/** sprite id 由 `content/manifest.json` 决定，渲染层不再维护联合类型 */
+export type SpriteId = string;
 
 export type SpriteAsset = {
   key: SpriteId;
-  /** 有美术资源时填图集帧名；为空就走程序化占位 */
-  frame?: string;
-  draw?: (g: Graphics) => void;
+  /** manifest 里填的图片地址；为空说明还没有美术资源 */
+  image?: string | null;
+  /** 设计尺寸（像素）；渲染不依赖它，编辑器和缺图检查用 */
+  size?: [number, number];
+  /** 缺图时的程序化占位绘制（来自 placeholders.ts） */
+  draw: PlaceholderDraw;
 };
 
 /**
- * 资源表。现在全部是程序化占位（灰盒），接美术后在这里把 draw 换成 frame，
- * 其余代码（实体、系统、同步）一行都不用改。
+ * 资源表：从内容清单派生。
+ *
+ * 之前这是一张手写的 SPRITES 表，id 和 draw 都写死在渲染层；
+ * 现在"有哪些 sprite、图在哪、多大"来自 content/manifest.json，
+ * 缺图时画什么来自 placeholders.ts。加一个 sprite 只改 manifest，
+ * 实体、系统、同步代码一行都不用动。
  */
-export const SPRITES: Record<SpriteId, SpriteAsset> = {
-  "player.human": {
-    key: "player.human",
-    draw: (g) => {
-      g.circle(0, 0, 16).fill(0xb4552d).stroke({ width: 3, color: 0xffd166 });
-      g.circle(0, 0, 6).fill(0xffd166);
-    },
-  },
-  "player.undead": {
-    key: "player.undead",
-    draw: (g) => {
-      g.circle(0, 0, 16).fill(0xe8e2d0).stroke({ width: 3, color: 0x39e0c8 });
-      g.circle(0, 0, 6).fill(0x39e0c8);
-    },
-  },
-  "enemy.melee": {
-    key: "enemy.melee",
-    draw: (g) => {
-      g.circle(0, 0, 16).fill(0x2a1c24).stroke({ width: 3, color: 0xd7263d });
-    },
-  },
-  "enemy.turret": {
-    key: "enemy.turret",
-    draw: (g) => {
-      g.circle(0, 0, 18).fill(0x24313f).stroke({ width: 3, color: 0xc9a227 });
-    },
-  },
-  "enemy.sentry": {
-    key: "enemy.sentry",
-    draw: (g) => {
-      g.poly([0, -16, 14, 10, -14, 10]).fill(0x1b2a33).stroke({ width: 2.5, color: 0x66ccff });
-      g.circle(0, -2, 4).fill(0x66ccff);
-    },
-  },
-  "enemy.charger": {
-    key: "enemy.charger",
-    draw: (g) => {
-      g.poly([0, -20, 18, 0, 0, 20, -18, 0]).fill(0x3a2418).stroke({ width: 3, color: 0xffa000 });
-      g.circle(0, 0, 6).fill(0xffa000);
-    },
-  },
-  "enemy.boss": {
-    key: "enemy.boss",
-    draw: (g) => {
-      g.circle(0, 0, 60).fill(0x3a2318).stroke({ width: 6, color: 0xb4552d });
-      g.circle(0, 0, 26).fill(0xd7263d);
-    },
-  },
-  "prop.barrel": {
-    key: "prop.barrel",
-    draw: (g) => {
-      g.circle(0, 0, 22).fill(0x6b2f1c).stroke({ width: 3, color: 0xb4552d });
-    },
-  },
-  "prop.crystal": {
-    key: "prop.crystal",
-    draw: (g) => {
-      g.circle(0, 0, 22).fill(0x14453f).stroke({ width: 3, color: 0x39e0c8 });
-    },
-  },
-  "bullet.friendly": {
-    key: "bullet.friendly",
-    draw: (g) => {
-      g.rect(-4, -2, 8, 4).fill(0xffd166);
-    },
-  },
-  "bullet.hostile": {
-    key: "bullet.hostile",
-    draw: (g) => {
-      g.rect(-5, -2.5, 10, 5).fill(0xd7263d);
-    },
-  },
-  "weapon.gun": {
-    key: "weapon.gun",
-    draw: (g) => {
-      g.rect(0, -3.5, 24, 7).fill(0xffffff).stroke({ width: 1.5, color: 0x11161c });
-      g.rect(22, -2, 6, 4).fill(0xffffff);
-    },
-  },
-  "weapon.melee": {
-    key: "weapon.melee",
-    draw: (g) => {
-      g.rect(0, -2.5, 14, 5).fill(0x8a7a5c);
-      g.poly([10, 3, 40, -26, 52, -26, 16, 9]).fill(0xffffff).stroke({ width: 2, color: 0x11161c });
-    },
-  },
-  "weapon.spell": {
-    key: "weapon.spell",
-    draw: (g) => {
-      g.rect(0, -2, 26, 4).fill(0x8a7a5c);
-      g.circle(30, 0, 7).fill(0xffffff).stroke({ width: 1.5, color: 0x11161c });
-    },
-  },
-  "weapon.totem": {
-    key: "weapon.totem",
-    draw: (g) => {
-      g.rect(0, -2, 16, 4).fill(0x8a7a5c);
-      g.circle(22, 0, 8).fill(0xffffff).stroke({ width: 2, color: 0x11161c });
-    },
-  },
-  "pickup.weapon": {
-    key: "pickup.weapon",
-    draw: (g) => {
-      g.poly([0, -14, 12, 0, 0, 14, -12, 0]).fill(0xffffff).stroke({ width: 2, color: 0x0a0e14 });
-    },
-  },
-  "fx.spark": {
-    key: "fx.spark",
-    draw: (g) => {
-      g.circle(0, 0, 4).fill(0xffffff);
-    },
-  },
-  "fx.totem": {
-    key: "fx.totem",
-    draw: (g) => {
-      g.circle(0, 0, 22).fill({ color: 0xffffff, alpha: 0.25 }).stroke({ width: 3, color: 0xffffff });
-    },
-  },
-  "debug.box": {
-    key: "debug.box",
-    draw: (g) => {
-      g.rect(-12, -12, 24, 24).fill(0xff00ff);
-    },
-  },
-};
+export const SPRITES: Record<string, SpriteAsset> = buildSpriteTable();
+
+function buildSpriteTable(): Record<string, SpriteAsset> {
+  const table: Record<string, SpriteAsset> = {};
+  for (const entry of getManifest().sprites) {
+    table[entry.id] = {
+      key: entry.id,
+      image: entry.image ?? null,
+      size: entry.size,
+      draw: PLACEHOLDERS[entry.id] ?? drawMissingBox,
+    };
+  }
+  return table;
+}
 
 const textures = new Map<string, Texture>();
 /** 图形是围绕自己的原点画的，烘成纹理后要把这个原点补回来 */
@@ -164,7 +44,22 @@ const anchors = new Map<string, { x: number; y: number }>();
 let prepared = false;
 
 /**
- * 把程序化图形烘成纹理（启动跑一次）。
+ * 图片地址 → 纹理。
+ *
+ * **空实现**：engine/assets 目前只提供清单（纯数据），真正的加载器
+ * （Assets.load / 图集解析 / 缓存）还没写，所以恒返回 null。
+ * 调用方拿到 null 就回落到程序化占位图——所以现在即使 manifest 里
+ * 填了 image，画面上仍然是占位图。接加载器时只改这一个函数。
+ */
+export function loadImageTexture(_url: string): Texture | null {
+  return null;
+}
+
+/**
+ * 把资源烘成纹理（启动跑一次）。
+ *
+ * 顺序：manifest 的 image（真实图片）优先；没有图 / 图还没加载出来时，
+ * 用 placeholders.ts 的程序化图形烘一张。
  *
  * 之前每个实体都是自己的 Graphics —— 每个都是独立 draw call，
  * 而且各自持有一份矢量几何。烘成纹理后同一资源的 Sprite 会被批处理，
@@ -176,12 +71,21 @@ export function prepareAssets(renderer: Renderer): void {
   if (prepared) return;
   prepared = true;
 
-  for (const asset of Object.values(SPRITES)) {
-    if (textures.has(asset.key)) continue;
+  for (const entry of getManifest().sprites) {
+    if (textures.has(entry.id)) continue;
 
+    // 1) 清单里填了 image：用真实图片（加载器还没实现，现在恒为 null）
+    const image = entry.image ? loadImageTexture(entry.image) : null;
+    if (image) {
+      textures.set(entry.id, image);
+      // 美术约定：图片自带留白，原点居中
+      anchors.set(entry.id, { x: 0.5, y: 0.5 });
+      continue;
+    }
+
+    // 2) 没图：回落到程序化占位
     const g = new Graphics();
-    if (asset.draw) asset.draw(g);
-    else g.rect(-12, -12, 24, 24).fill(0xff00ff);
+    (PLACEHOLDERS[entry.id] ?? drawMissingBox)(g);
 
     const bounds = g.getLocalBounds();
     const texture = renderer.generateTexture({
@@ -193,11 +97,11 @@ export function prepareAssets(renderer: Renderer): void {
     g.destroy();
 
     // 纹理的左上角对应原 bounds.x/y，算出 0,0 在纹理里的相对位置当作 anchor
-    anchors.set(asset.key, {
+    anchors.set(entry.id, {
       x: bounds.width > 0 ? -bounds.x / bounds.width : 0.5,
       y: bounds.height > 0 ? -bounds.y / bounds.height : 0.5,
     });
-    textures.set(asset.key, texture);
+    textures.set(entry.id, texture);
   }
 }
 
@@ -209,23 +113,23 @@ export function assetReady(): boolean {
   return prepared;
 }
 
-const MISSING = "debug.box" as SpriteId;
-
 /**
- * 实体视图。有纹理就返回 Sprite（可批处理），
- * 还没烘焙时退回 Graphics 占位——正常启动顺序下不会走到。
+ * 实体视图。烘焙过的资源返回 Sprite（可批处理）；
+ * 还没烘焙（或清单里没有这个 id）时，直接退回 Graphics 把占位图画出来，
+ * 保证视图永远存在、画出来的形状和烘焙版一致。
  */
 export function createSpriteView(id: string): Container {
-  const texture = textures.get(id) ?? textures.get(MISSING);
+  const texture = textures.get(id);
+
   if (!texture) {
     const g = new Graphics();
-    g.rect(-12, -12, 24, 24).fill(0xff00ff);
+    (PLACEHOLDERS[id] ?? drawMissingBox)(g);
     return g;
   }
 
   const sprite = new Sprite(texture);
-  const anchor = anchors.get(id) ?? anchors.get(MISSING);
-  if (anchor) sprite.anchor.set(anchor.x, anchor.y);
+  const anchor = anchors.get(id) ?? { x: 0.5, y: 0.5 };
+  sprite.anchor.set(anchor.x, anchor.y);
   sprite.roundPixels = true;
   return sprite;
 }

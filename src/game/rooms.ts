@@ -5,7 +5,7 @@ export const DOOR_GAP = 170;
 /** 外墙厚度 */
 export const WALL_T = 44;
 
-export type Rect = { x: number; y: number; w: number; h: number };
+export type { Rect } from "#content/templates.ts";
 /** 敌人原型 id（见 enemies 表） */
 export type EnemyKind = string;
 export type Spawn = { x: number; y: number; kind: EnemyKind };
