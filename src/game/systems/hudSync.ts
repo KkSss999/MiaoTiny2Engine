@@ -56,7 +56,8 @@ export function hudSyncSystem(w: World, visited: () => number): void {
     shield: Math.round(w.get(pe, Shield)?.value ?? 0),
     shieldMax: Math.round(w.get(pe, Shield)?.max ?? 0),
     skillName: skill?.name ?? "",
-    skillCd: first?.cd ?? 0,
+    // 保留一位小数：float 每帧都在变，会让 HUD 每帧重渲染
+    skillCd: Math.round((first?.cd ?? 0) * 10) / 10,
     skillCdMax: skill?.cooldown ?? 1,
     over: run.over,
     won: run.won,

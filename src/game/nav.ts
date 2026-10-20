@@ -59,10 +59,14 @@ export const cellYOf = (nav: NavGrid, y: number): number =>
   Math.min(nav.rows - 1, Math.max(0, Math.floor(y / nav.cell)));
 export const cellIndexOf = (nav: NavGrid, x: number, y: number): number => cellYOf(nav, y) * nav.cols + cellXOf(nav, x);
 
-const DIAG = 14;
-const ORTHO = 10;
-
-/** 从起点格做加权广度优先，写入 dist */
+/**
+ * 从起点格做广度优先，写入 dist。
+ *
+ * 注意：这里用"每步 1"的均一代价，而不是 10/14 的加权。
+ * 加权版本需要允许"更短路径把格子重新入队"，一次计算可能入队
+ * 远超格子数（队列定长会越界成 NaN，随后 NaN 比较恒为 true，
+ * 变成死循环直接卡死页面）。均一 BFS 保证每格最多入队一次。
+ */
 export function computeFlow(nav: NavGrid, startX: number, startY: number): void {
   nav.dist.fill(-1);
   const sx = cellXOf(nav, startX);
@@ -75,6 +79,7 @@ export function computeFlow(nav: NavGrid, startX: number, startY: number): void 
   let from = start;
   if (nav.blocked[start]) {
     let best = -1;
+    let bestScore = Number.MAX_SAFE_INTEGER;
     for (let dy = -2; dy <= 2; dy++) {
       for (let dx = -2; dx <= 2; dx++) {
         const nx = sx + dx;
@@ -82,17 +87,22 @@ export function computeFlow(nav: NavGrid, startX: number, startY: number): void 
         if (nx < 0 || ny < 0 || nx >= nav.cols || ny >= nav.rows) continue;
         const idx = ny * nav.cols + nx;
         if (nav.blocked[idx]) continue;
-        const d = dx * dx + dy * dy;
-        if (best < 0 || d < best) best = idx;
+        const score = dx * dx + dy * dy;
+        if (score < bestScore) {
+          bestScore = score;
+          best = idx;
+        }
       }
     }
     if (best < 0) return;
     from = best;
   }
 
-  const queue = new Int32Array(nav.cols * nav.rows);
+  const capacity = nav.cols * nav.rows;
+  const queue = new Int32Array(capacity);
   let head = 0;
   let tail = 0;
+
   nav.dist[from] = 0;
   queue[tail++] = from;
 
@@ -100,7 +110,7 @@ export function computeFlow(nav: NavGrid, startX: number, startY: number): void 
     const idx = queue[head++];
     const x = idx % nav.cols;
     const y = (idx / nav.cols) | 0;
-    const d = nav.dist[idx];
+    const nd = nav.dist[idx] + 1;
 
     for (let dy = -1; dy <= 1; dy++) {
       for (let dx = -1; dx <= 1; dx++) {
@@ -110,12 +120,11 @@ export function computeFlow(nav: NavGrid, startX: number, startY: number): void 
         if (nx < 0 || ny < 0 || nx >= nav.cols || ny >= nav.rows) continue;
         const ni = ny * nav.cols + nx;
         if (nav.blocked[ni]) continue;
+        if (nav.dist[ni] !== -1) continue; // 已访问过，绝不重复入队
         // 斜走不允许切墙角
         if (dx !== 0 && dy !== 0 && (nav.blocked[y * nav.cols + nx] || nav.blocked[ny * nav.cols + x])) continue;
-        const nd = d + (dx !== 0 && dy !== 0 ? DIAG : ORTHO);
-        if (nav.dist[ni] !== -1 && nav.dist[ni] <= nd) continue;
         nav.dist[ni] = nd;
-        queue[tail++] = ni;
+        if (tail < capacity) queue[tail++] = ni;
       }
     }
   }
@@ -145,7 +154,7 @@ export function flowDir(nav: NavGrid, x: number, y: number): { x: number; y: num
         if (nx < 0 || ny < 0 || nx >= nav.cols || ny >= nav.rows) continue;
         const idx = ny * nav.cols + nx;
         if (nav.blocked[idx] || nav.dist[idx] < 0) continue;
-        const score = nav.dist[idx] + (Math.abs(dx) + Math.abs(dy)) * ORTHO;
+        const score = nav.dist[idx] + Math.abs(dx) + Math.abs(dy);
         if (score < bestScore) {
           bestScore = score;
           best = idx;

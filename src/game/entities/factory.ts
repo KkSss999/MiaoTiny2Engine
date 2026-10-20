@@ -65,6 +65,9 @@ export function spawnEnemy(
   const def = getEnemy(typeId) ?? getEnemy("melee");
   if (!def) throw new Error(`未知敌人原型：${typeId}`);
 
+  // 召唤类敌人可能无限堆叠，设一个硬上限兜底
+  if (world.query(EnemyTag).count >= 40) return scope.spawn(Position);
+
   const hp = eliteAffix ? Math.round(def.hp * 1.4) : def.hp;
   const e = scope.spawn(Position);
   world.add(e, Position, { x, y });
