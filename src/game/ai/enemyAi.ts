@@ -1,7 +1,7 @@
 import type { MachineDef } from "@core/fsm/index.ts";
 import type { EnemyDef } from "../content.ts";
 import type { Threat } from "./perception.ts";
-import { burstRadial, contact, shootFan, shootStraight, summonAdds } from "./attacks.ts";
+import { contact, firePattern, summonAdds } from "./attacks.ts";
 import { approachAtAngle, flee, keepDistance, seek } from "./steering.ts";
 
 /**
@@ -42,20 +42,39 @@ const CHASER: MachineDef<EnemyCtx, string> = {
   },
 };
 
-/** 站桩射击 */
+/**
+ * 站桩射击：瞄准 → 前摇 → 开火 → 破绽。
+ * 前摇期间不动，给玩家反应时间；破绽期间可被打断（伤害加成由伤害管线处理）。
+ */
 const TURRET: MachineDef<EnemyCtx, string> = {
   id: "turret",
   initial: "aim",
   states: {
     aim: {
-      update: (c) => {
-        shootStraight(c);
-      },
+      transitions: [
+        {
+          when: (c) => c.cd <= 0 && c.threat.los && c.threat.dist <= c.def.projectileRange,
+          to: "windup",
+        },
+      ],
+    },
+    windup: {
+      enter: (c) => c.setCd(c.def.projectileInterval),
+      minTime: (c) => c.def.telegraph,
+      transitions: [{ after: (c) => c.def.telegraph, to: "fire" }],
+    },
+    fire: {
+      enter: (c) => firePattern(c),
+      transitions: [{ after: 0.05, to: "recover" }],
+    },
+    recover: {
+      minTime: (c) => c.def.recover,
+      transitions: [{ after: (c) => c.def.recover, to: "aim" }],
     },
   },
 };
 
-/** 追一段，冲一下 */
+/** 追 → 蓄力 → 冲锋 → 破绽 */
 const CHARGER: MachineDef<EnemyCtx, string> = {
   id: "charger",
   initial: "chase",
@@ -65,60 +84,89 @@ const CHARGER: MachineDef<EnemyCtx, string> = {
         walk(c, seek(c.threat));
         contact(c, c.def.damage);
       },
-      transitions: [{ when: (c) => c.cd <= 0 && c.def.chargeSpeed > 0, to: "charge" }],
+      transitions: [{ when: (c) => c.cd <= 0 && c.def.chargeSpeed > 0, to: "windup" }],
     },
-    charge: {
-      minTime: 0.2,
+    windup: {
+      minTime: (c) => c.def.telegraph,
+      transitions: [{ after: (c) => c.def.telegraph, to: "dash" }],
+    },
+    dash: {
       enter: (c) => c.setCd(c.def.chargeInterval),
+      minTime: 0.1,
       update: (c) => {
         c.charge(c.threat.ux, c.threat.uy);
         contact(c, c.def.chargeDamage);
       },
-      transitions: [{ after: 0.4, to: "chase" }],
+      transitions: [{ after: (c) => c.def.chargeDuration, to: "recover" }],
+    },
+    recover: {
+      minTime: (c) => c.def.recover,
+      transitions: [{ after: (c) => c.def.recover, to: "chase" }],
     },
   },
 };
 
-/** 保持距离 + 扇形射击：转向和攻击都直接复用原语 */
+/** 保持距离 + 扇形射击：边跑位边架枪 */
 const KITER: MachineDef<EnemyCtx, string> = {
   id: "kiter",
   initial: "keep",
   states: {
     keep: {
-      update: (c) => {
-        walk(c, keepDistance(c.threat, c.def.keepDistance));
-        if (!shootFan(c, c.def.fanCount, c.def.fanSpread)) {
-          // 没开火时小幅游走，避免贴脸站桩
-          if (c.threat.dist < c.def.keepDistance * 0.6) walk(c, flee(c.threat));
-        }
-        contact(c, c.def.damage);
-      },
+      update: (c) => walk(c, keepDistance(c.threat, c.def.keepDistance)),
+      transitions: [
+        {
+          when: (c) => c.cd <= 0 && c.threat.los && c.threat.dist <= c.def.projectileRange,
+          to: "windup",
+        },
+      ],
+    },
+    windup: {
+      enter: (c) => c.setCd(c.def.projectileInterval),
+      minTime: (c) => c.def.telegraph,
+      update: (c) => walk(c, keepDistance(c.threat, c.def.keepDistance)),
+      transitions: [{ after: (c) => c.def.telegraph, to: "fire" }],
+    },
+    fire: {
+      enter: (c) => firePattern(c),
+      transitions: [{ after: 0.05, to: "recover" }],
+    },
+    recover: {
+      minTime: (c) => c.def.recover,
+      update: (c) => walk(c, flee(c.threat)),
+      transitions: [{ after: (c) => c.def.recover, to: "keep" }],
     },
   },
 };
 
-/** Boss：追 + 冲撞 + 召唤 + 环形弹幕 */
+/** Boss：追 → 蓄力（召唤）→ 冲撞 + 环形弹幕 → 破绽 */
 const BOSS: MachineDef<EnemyCtx, string> = {
   id: "boss",
   initial: "chase",
   states: {
     chase: {
       update: (c) => walk(c, seek(c.threat)),
-      transitions: [{ when: (c) => c.cd <= 0, to: "charge" }],
+      transitions: [{ when: (c) => c.cd <= 0, to: "windup" }],
     },
-    charge: {
-      minTime: 0.45,
+    windup: {
       enter: (c) => {
         c.setCd(c.def.chargeInterval);
         summonAdds(c);
-        burstRadial(c, c.def.radialCount, Math.random() * Math.PI);
-        c.setCd(c.def.chargeInterval);
       },
+      minTime: (c) => c.def.telegraph,
+      transitions: [{ after: (c) => c.def.telegraph, to: "dash" }],
+    },
+    dash: {
+      enter: (c) => firePattern(c),
+      minTime: 0.1,
       update: (c) => {
         c.charge(c.threat.ux, c.threat.uy);
         contact(c, c.def.chargeDamage);
       },
-      transitions: [{ after: 0.45, to: "chase" }],
+      transitions: [{ after: (c) => c.def.chargeDuration, to: "recover" }],
+    },
+    recover: {
+      minTime: (c) => c.def.recover,
+      transitions: [{ after: (c) => c.def.recover, to: "chase" }],
     },
   },
 };

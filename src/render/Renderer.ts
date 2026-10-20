@@ -6,6 +6,16 @@ import type { RoomCtx } from "../game/resources.ts";
 import { ROOM } from "../game/resources.ts";
 import { RoomEntered } from "../game/events.ts";
 import { hud } from "../game/store.ts";
+import { Brain } from "../game/components.ts";
+
+const mixTint = (a: number, b: number, k: number): number => {
+  const ar = (a >> 16) & 255, ag = (a >> 8) & 255, ab = a & 255;
+  const br = (b >> 16) & 255, bg = (b >> 8) & 255, bb = b & 255;
+  const r = Math.round(ar + (br - ar) * k);
+  const g = Math.round(ag + (bg - ag) * k);
+  const bl = Math.round(ab + (bb - ab) * k);
+  return (r << 16) | (g << 8) | bl;
+};
 import type { Dir, RoomNode } from "../game/gen/floor.ts";
 import type { Rect } from "../game/rooms.ts";
 import { attachLayers, createLayers, type LayerMap } from "./layerContainers.ts";
@@ -146,7 +156,19 @@ export class Renderer {
 
       const tweenScale = this.tweens.get(e);
       view.scale.set(tweenScale ?? r.scale);
-      if (r.tint !== null && r.tint !== undefined) view.tint = r.tint;
+
+      // 前摇/破绽：用染色让玩家读得出来
+      const brain = this.world.get(e, Brain);
+      if (brain && brain.state === "windup") {
+        const k = Math.min(1, brain.time * 3.5);
+        view.tint = mixTint(0xffffff, 0xff4422, k);
+      } else if (brain && brain.state === "recover") {
+        view.tint = 0x7d848c;
+      } else if (r.tint !== null && r.tint !== undefined) {
+        view.tint = r.tint;
+      } else {
+        view.tint = 0xffffff;
+      }
       if (SORTED_LAYERS.includes(r.layer)) view.zIndex = Math.round(y);
     });
 

@@ -17,6 +17,12 @@ export type MachineData<S extends StateId = StateId> = {
   triggers: string[];
 };
 
+/** 时长可以是固定值，也可以由上下文推出（不同怪的前摇不一样） */
+export type Duration<C> = number | ((ctx: C) => number);
+
+const resolveDuration = <C,>(value: Duration<C> | undefined, ctx: C): number =>
+  typeof value === "function" ? value(ctx) : (value ?? 0);
+
 export type Transition<C, S extends StateId> = {
   to: S;
   /** 事件触发：本 tick fire 过这个触发器 */
@@ -24,14 +30,14 @@ export type Transition<C, S extends StateId> = {
   /** 每 tick 判定，必须无副作用 */
   when?: (ctx: C) => boolean;
   /** 进入当前状态后经过多少秒 */
-  after?: number;
+  after?: Duration<C>;
   /** 无视 minTime 强行转移 */
   interrupt?: boolean;
 };
 
 export type StateDef<C, S extends StateId> = {
   /** 必须停留的最短时间，期间只有 interrupt 转移能离开 */
-  minTime?: number;
+  minTime?: Duration<C>;
   enter?: (ctx: C) => void;
   exit?: (ctx: C) => void;
   update?: (ctx: C, dt: number) => void;
@@ -77,7 +83,7 @@ export function step<C, S extends StateId>(
   current.update?.(ctx, dt);
   data.time += dt;
 
-  const minTime = current.minTime ?? 0;
+  const minTime = resolveDuration(current.minTime, ctx);
   let matched: Transition<C, S> | null = null;
 
   for (const t of current.transitions ?? []) {
@@ -87,7 +93,7 @@ export function step<C, S extends StateId>(
     } else if (t.when !== undefined) {
       if (!t.when(ctx)) continue;
     } else if (t.after !== undefined) {
-      if (data.time < t.after) continue;
+      if (data.time < resolveDuration(t.after, ctx)) continue;
     } else {
       continue;
     }

@@ -1,6 +1,6 @@
 import type { World } from "@core/ecs/index.ts";
 import { step } from "@core/fsm/index.ts";
-import { Brain, Circle, EnemyTag, Health, Knock, Position } from "../components.ts";
+import { Brain, Circle, EliteTag, EnemyTag, Health, Knock, Position } from "../components.ts";
 import { damagePlayer, effects, moveWithWalls, playerEntity, roomCtx } from "../combat.ts";
 import { ENEMY_BEHAVIORS, type EnemyCtx } from "../ai/enemyAi.ts";
 import { sense } from "../ai/perception.ts";
@@ -8,6 +8,7 @@ import { getEnemy } from "../content.ts";
 import { speedMul } from "../status.ts";
 import { runCtx } from "../query.ts";
 import { flowDir, type NavGrid } from "../nav.ts";
+import { AFFIX_COLORS } from "../affixes.ts";
 import { NAV } from "../resources.ts";
 import { ROOM_H, ROOM_W } from "../rooms.ts";
 
@@ -19,7 +20,9 @@ export function enemiesSystem(w: World, dt: number): void {
   if (pe === undefined) return;
   const pcircle = w.require(pe, Circle);
 
+  let slot = 0;
   w.query(Position, Circle, Health, EnemyTag, Brain).forEach((e, pos, circle, hp, tag, brain) => {
+    const mySlot = slot++;
     if (hp.hp <= 0) return;
 
     tag.flash = Math.max(0, tag.flash - dt);
@@ -37,8 +40,26 @@ export function enemiesSystem(w: World, dt: number): void {
     const def = getEnemy(tag.typeId) ?? getEnemy("melee");
     if (!def) return;
 
+    const elite = w.get(e, EliteTag);
+    const affixTags = elite && elite.affixId ? [elite.affixId] : [];
+
     // 感知一次，行为只消费结果
     const threat = sense(w, pos, pe, room.walls);
+
+    // 包夹：靠近后各自绕向一个固定角度，避免全部挤在同一条线上
+    if (def.flankRadius > 0 && threat.los && threat.dist < 320) {
+      const ppos = w.get(pe, Position);
+      if (ppos) {
+        const angle = ((mySlot % 6) / 6) * Math.PI * 2;
+        const fx = ppos.x + Math.cos(angle) * def.flankRadius - pos.x;
+        const fy = ppos.y + Math.sin(angle) * def.flankRadius - pos.y;
+        const flen = Math.hypot(fx, fy) || 1;
+        const bx = threat.dir.x * 0.35 + (fx / flen) * 0.65;
+        const by = threat.dir.y * 0.35 + (fy / flen) * 0.65;
+        const len = Math.hypot(bx, by) || 1;
+        threat.dir = { x: bx / len, y: by / len };
+      }
+    }
 
     // 看不见玩家时用流场解决绕障
     if (!threat.los) {
@@ -66,9 +87,21 @@ export function enemiesSystem(w: World, dt: number): void {
         moveWithWalls(room.walls, pos, circle.r, ux * def.chargeSpeed * slow * dt, uy * def.chargeSpeed * slow * dt),
       shoot: (angle, speed, dmg) => {
         runCtx(w).shots += 1;
-        effects(w).push({ type: "bullet", x: pos.x, y: pos.y, angle, speed, dmg, friendly: false, color: 0xd7263d, r: 5 });
+        const color = (elite?.affixId && AFFIX_COLORS[elite.affixId]) || 0xd7263d;
+        effects(w).push({
+          type: "bullet",
+          x: pos.x,
+          y: pos.y,
+          angle,
+          speed,
+          dmg,
+          friendly: false,
+          color,
+          r: 5,
+          affix: elite?.affixId || undefined,
+        });
       },
-      hitPlayer: (dmg) => damagePlayer(w, dmg),
+      hitPlayer: (dmg) => damagePlayer(w, dmg, affixTags),
       spawnAdd: () =>
         effects(w).push({
           type: "enemy",

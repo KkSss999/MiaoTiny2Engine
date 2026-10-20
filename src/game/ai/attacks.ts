@@ -43,3 +43,29 @@ export function burstRadial(c: EnemyCtx, count: number, offset = 0): boolean {
 export function summonAdds(c: EnemyCtx, count = c.def.summonCount): void {
   for (let i = 0; i < count; i++) c.spawnAdd();
 }
+/**
+ * 按原型配置打一套（环形 / 扇形 / 单发）。
+ * 时机由状态机保证，这里不再检查冷却和视线。
+ */
+export function firePattern(c: EnemyCtx): void {
+  const d = c.def;
+  if (d.projectileSpeed <= 0) return;
+
+  if (d.radialCount > 0) {
+    const n = d.radialCount;
+    for (let i = 0; i < n; i++) c.shoot((i / n) * Math.PI * 2, d.projectileSpeed, d.projectileDamage);
+    return;
+  }
+
+  if (d.fanCount > 1) {
+    const base = aimAngle(c);
+    const n = d.fanCount;
+    for (let i = 0; i < n; i++) {
+      const offset = (i / (n - 1) - 0.5) * d.fanSpread;
+      c.shoot(base + offset, d.projectileSpeed, d.projectileDamage);
+    }
+    return;
+  }
+
+  c.shoot(aimAngle(c), d.projectileSpeed, d.projectileDamage);
+}

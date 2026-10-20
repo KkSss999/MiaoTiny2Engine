@@ -177,3 +177,9 @@ export const Shield = defineComponent(
     timer: s.number().min(0),
   }),
 );
+/** 精英怪：攻击附带词条 */
+export const EliteTag = defineComponent(
+  "EliteTag",
+  () => ({ affixId: "" }),
+  defineShape("EliteTag", { affixId: s.string() }),
+);

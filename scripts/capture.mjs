@@ -72,9 +72,8 @@ if (tp) {
 }
 const spawnId = process.argv.find((a) => a.startsWith("--spawn="))?.split("=")[1];
 if (spawnId) await evalJs(`window.__dbg.spawn('${spawnId}')`);
-const spawnAt = process.argv.find((a) => a.startsWith("--spawnat="))?.split("=")[1];
-if (spawnAt) {
-  const [id, sx, sy] = spawnAt.split(",");
+for (const arg of process.argv.filter((a) => a.startsWith("--spawnat="))) {
+  const [id, sx, sy] = arg.slice("--spawnat=".length).split(",");
   await evalJs(`window.__dbg.spawnAt('${id}', ${Number(sx)}, ${Number(sy)})`);
 }
 const walkKey = process.argv.find((a) => a.startsWith("--walk="))?.split("=")[1];

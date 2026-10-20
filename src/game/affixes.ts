@@ -28,13 +28,14 @@ const HANDLERS: Record<string, Handler> = {
     burst(world, packet.target, 0x9b6bff, 6);
   },
 
-  lifesteal: (world, _packet, applied) => {
-    const player = playerEntity(world);
-    if (player === undefined) return;
-    const hp = world.get(player, Health);
+  lifesteal: (world, packet, applied) => {
+    // 谁打的谁回血：玩家词条回玩家，精英怪词条回它自己
+    const owner = packet.source !== null ? packet.source : playerEntity(world);
+    if (owner === undefined) return;
+    const hp = world.get(owner, Health);
     if (!hp) return;
     hp.hp = Math.min(hp.max, hp.hp + applied * 0.15);
-    burst(world, player, 0x39e0c8, 4);
+    burst(world, owner, 0x39e0c8, 4);
   },
 
   knockback: (world, packet) => {
@@ -90,3 +91,17 @@ export function installAffixes(world: World): void {
 }
 
 export const AFFIX_IDS = Object.keys(HANDLERS);
+
+/** 精英怪可以带的词条：连锁对单体无意义，排除 */
+export const ELITE_AFFIXES = AFFIX_IDS.filter((id) => id !== "chain");
+
+export const AFFIX_COLORS: Record<string, number> = {
+  burn: 0xff7a1a,
+  freeze: 0x66ccff,
+  curse: 0x9b6bff,
+  lifesteal: 0x39e0c8,
+  knockback: 0xffffff,
+};
+
+export const pickEliteAffix = (): string =>
+  ELITE_AFFIXES[Math.floor(Math.random() * ELITE_AFFIXES.length)];

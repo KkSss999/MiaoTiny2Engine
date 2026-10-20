@@ -3,6 +3,7 @@ import { createMachine } from "@core/fsm/index.ts";
 import type { Race } from "../api.ts";
 import type { WeaponSlot } from "../components.ts";
 import { allAffixes, getEnemy, getWeapon } from "../content.ts";
+import { AFFIX_COLORS } from "../affixes.ts";
 import type { Effect } from "../effects.ts";
 import { ROOM_H } from "../rooms.ts";
 import { ENEMY_BEHAVIORS } from "../ai/enemyAi.ts";
@@ -10,7 +11,7 @@ import { STARTING_SKILLS } from "../skills.ts";
 import { STARTING_IMPLANTS, applyImplants } from "../implants.ts";
 import { PLAYER_FSM } from "../ai/playerAi.ts";
 import {
-  Aim, Brain, BulletTag, Circle, EnemyTag, Health, Level, Loadout, Pickup, PlayerTag, Position, PropTag, Skills, SpriteRef, Statuses, Totem, Velocity,
+  Aim, Brain, BulletTag, Circle, EliteTag, EnemyTag, Health, Level, Loadout, Pickup, PlayerTag, Position, PropTag, Skills, SpriteRef, Statuses, Totem, Velocity,
 } from "../components.ts";
 
 type BulletEffect = Extract<Effect, { type: "bullet" }>;
@@ -53,14 +54,23 @@ export function spawnPlayer(world: World, race: Race): Entity {
   return e;
 }
 
-export function spawnEnemy(world: World, scope: EntityScope, typeId: string, x: number, y: number): Entity {
+export function spawnEnemy(
+  world: World,
+  scope: EntityScope,
+  typeId: string,
+  x: number,
+  y: number,
+  eliteAffix: string | null = null,
+): Entity {
   const def = getEnemy(typeId) ?? getEnemy("melee");
   if (!def) throw new Error(`未知敌人原型：${typeId}`);
 
+  const hp = eliteAffix ? Math.round(def.hp * 1.4) : def.hp;
   const e = scope.spawn(Position);
   world.add(e, Position, { x, y });
   world.add(e, Circle, { r: def.radius });
-  world.add(e, Health, { hp: def.hp, max: def.hp });
+  world.add(e, Health, { hp, max: hp });
+  if (eliteAffix) world.add(e, EliteTag, { affixId: eliteAffix });
   world.add(e, EnemyTag, { typeId: def.id, speed: def.speed, cd: rnd(0.4, 1.4), flash: 0 });
   world.add(e, Statuses);
   const machine = ENEMY_BEHAVIORS[def.behavior] ?? ENEMY_BEHAVIORS.chaser;
@@ -69,8 +79,9 @@ export function spawnEnemy(world: World, scope: EntityScope, typeId: string, x: 
     spriteId: def.sprite,
     layer: "actor",
     rotation: "none",
-    scale: 1,
+    scale: eliteAffix ? 1.15 : 1,
     popIn: true,
+    tint: eliteAffix ? (AFFIX_COLORS[eliteAffix] ?? null) : null,
   });
   return e;
 }

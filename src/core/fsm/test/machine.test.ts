@@ -309,3 +309,32 @@ test("不传 bus 时不广播，行为不变", () => {
   const result = step(def, m, c, 0.016);
   assert.deepEqual(result, { from: "idle", to: "chase" });
 });
+
+test("时长可以由上下文决定（不同单位不同前摇）", () => {
+  type C = { telegraph: number };
+  const def: MachineDef<C, "windup" | "fire" | "recover"> = {
+    id: "ctx-duration",
+    initial: "windup",
+    states: {
+      windup: { transitions: [{ after: (c) => c.telegraph, to: "fire" }] },
+      fire: { minTime: (c) => c.telegraph / 2, transitions: [{ after: (c) => c.telegraph / 2, to: "recover" }] },
+      recover: {},
+    },
+  };
+
+  const fast: C = { telegraph: 0.2 };
+  const slow: C = { telegraph: 1 };
+
+  const a = createMachine(def);
+  step(def, a, slow, 0.15);
+  assert.equal(a.state, "windup", "慢速单位 0.15s 还不该出手");
+
+  const b = createMachine(def);
+  step(def, b, fast, 0.15);
+  assert.equal(b.state, "windup");
+  step(def, b, fast, 0.1);
+  assert.equal(b.state, "fire", "快速单位 0.25s 已出手");
+
+  step(def, b, fast, 0.2);
+  assert.equal(b.state, "recover", "开火后进入破绽");
+});

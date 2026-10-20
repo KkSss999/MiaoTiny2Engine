@@ -1,6 +1,6 @@
 import type { World } from "@core/ecs/index.ts";
 import type { Floor, RoomNode } from "./gen/floor.ts";
-import { BulletTag, EnemyTag, Health, Level, PlayerTag, Position, SpriteRef } from "./components.ts";
+import { Brain, BulletTag, EliteTag, EnemyTag, Health, Level, PlayerTag, Position, SpriteRef } from "./components.ts";
 import { DEBUG, type DebugCtx } from "./resources.ts";
 import { playerEntity, roomCtx, runCtx } from "./combat.ts";
 import { input } from "./input.ts";
@@ -40,11 +40,16 @@ export function installDebugHooks(deps: DebugDeps): void {
       const hp = pe === undefined ? 0 : (w.get(pe, Health)?.hp ?? 0);
       let enemies = 0;
       const enemyHp: number[] = [];
+      const enemyStates: string[] = [];
+      const elites: string[] = [];
       for (const e of w.query(EnemyTag, Health).collect()) {
         const hp2 = w.get(e, Health)?.hp ?? 0;
         if (hp2 > 0) {
           enemies++;
           enemyHp.push(Math.round(hp2));
+          enemyStates.push(`${w.get(e, EnemyTag)?.typeId ?? "?"}:${w.get(e, Brain)?.state ?? "?"}`);
+          const elite = w.get(e, EliteTag);
+          if (elite) elites.push(`${w.get(e, EnemyTag)?.typeId ?? "?"}:${elite.affixId}`);
         }
       }
       const counters = deps.counters();
@@ -69,6 +74,8 @@ export function installDebugHooks(deps: DebugDeps): void {
         won: run.won,
         enemies,
         enemyHp,
+        enemyStates,
+        elites,
         bullets: w.query(BulletTag).count,
         shots: run.shots,
         auto: w.resource<DebugCtx>(DEBUG).autoAim,

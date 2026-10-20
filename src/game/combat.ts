@@ -52,7 +52,7 @@ export function damageEnemy(w: World, target: Entity, amount: number, source: En
 }
 
 /** 对玩家造成伤害：无敌帧、受击反馈在这里，数值同样走管线 */
-export function damagePlayer(w: World, amount: number): void {
+export function damagePlayer(w: World, amount: number, tags: string[] = []): void {
   const run = runCtx(w);
   if (run.over) return;
   const player = playerEntity(w);
@@ -65,7 +65,7 @@ export function damagePlayer(w: World, amount: number): void {
   shake(w, 0.3);
   run.freeze = 0.05;
   w.bus.emit(PlayerDamaged, { amount, hp: hp.hp - amount });
-  dealDamage(w, { source: null, target: player, amount, kind: "contact", tags: [] });
+  dealDamage(w, { source: null, target: player, amount, kind: "contact", tags });
 }
 
 export function explode(w: World, x: number, y: number, radius: number, dmg: number): void {

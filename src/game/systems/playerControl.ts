@@ -6,6 +6,7 @@ import { input } from "../input.ts";
 import { DEBUG, VIEW, type DebugCtx, type ViewCtx } from "../resources.ts";
 import { ROOM_H, ROOM_W } from "../rooms.ts";
 import { PLAYER_FSM, type PlayerCtx } from "../ai/playerAi.ts";
+import { speedMul } from "../status.ts";
 
 /**
  * 玩家移动 / 瞄准 / 开火。
@@ -84,7 +85,11 @@ export function playerControlSystem(w: World, dt: number): void {
     my,
     dashX: pt.dashX,
     dashY: pt.dashY,
-    move: (ux, uy, speed) => moveWithWalls(room.walls, pos, 16, ux * speed * dt, uy * speed * dt),
+    // 冰冻等状态同样作用于玩家
+    move: (ux, uy, speed) => {
+      const mul = speedMul(w, pe);
+      moveWithWalls(room.walls, pos, 16, ux * speed * mul * dt, uy * speed * mul * dt);
+    },
   };
   step(PLAYER_FSM, brain, ctx, dt, w.bus);
 

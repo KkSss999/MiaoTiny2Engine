@@ -1,6 +1,6 @@
 import type { Entity, World } from "@core/ecs/index.ts";
 import { defineEvent } from "@core/event/index.ts";
-import { EnemyTag, Health, Implants, Level, PlayerTag } from "./components.ts";
+import { Brain, EnemyTag, Health, Implants, Level, PlayerTag } from "./components.ts";
 import { damageTakenMul } from "./status.ts";
 import { runCtx } from "./query.ts";
 import { getEnemy } from "./content.ts";
@@ -109,6 +109,14 @@ export function grantXp(world: World, entity: Entity, amount: number): void {
  */
 export function installDamageRules(world: World): void {
   world.bus.on(DamageIncoming, (packet) => {
+    // 破绽：出招后的硬直期挨打更疼
+    const brain = world.get(packet.target, Brain);
+    const enemy = world.get(packet.target, EnemyTag);
+    if (brain && enemy && brain.state === "recover") {
+      const def = getEnemy(enemy.typeId);
+      if (def) packet.amount *= def.exposeMul;
+    }
+
     // 玩家等级加成：每级 +6%
     if (packet.source !== null) {
       const lv = world.get(packet.source, Level);

@@ -10,6 +10,7 @@ import { playerEntity, roomCtx } from "../combat.ts";
 import { spawnEnemy, spawnProp } from "../entities/factory.ts";
 import { RoomEntered } from "../events.ts";
 import { SCOPE } from "../resources.ts";
+import { pickEliteAffix } from "../affixes.ts";
 
 const SAFE: RoomType[] = ["start", "shop", "rest", "event"];
 
@@ -101,7 +102,9 @@ export class WorldManager {
 
     for (const pr of build.props) spawnProp(w, this.scope, pr.kind, pr.x, pr.y);
     if (!room.cleared) {
-      for (const s of build.spawns) spawnEnemy(w, this.scope, s.kind, s.x, s.y);
+      // 精英房：整间屋子共享一个词条，形成主题威胁
+      const eliteAffix = node.type === "elite" ? pickEliteAffix() : null;
+      for (const s of build.spawns) spawnEnemy(w, this.scope, s.kind, s.x, s.y, eliteAffix);
       if (node.type === "boss") spawnEnemy(w, this.scope, "boss", ROOM_W / 2, ROOM_H / 2);
     }
 
