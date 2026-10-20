@@ -32,6 +32,7 @@ import { weaponsSystem } from "./systems/weapons.ts";
 import { totemsSystem } from "./systems/totems.ts";
 import { rollDrop } from "./systems/weapons.ts";
 import { installAffixes } from "./affixes.ts";
+import { implantSystem, installImplants } from "./implants.ts";
 import { installDebugHooks } from "./debug.ts";
 import { Loop } from "@core/time/Loop.ts";
 
@@ -163,6 +164,7 @@ export class Game {
 
     installDamageRules(w);
     installAffixes(w);
+    installImplants(w);
 
     this.schedule
       .add("playerControl", (world, ctx) => playerControlSystem(world, ctx.dt), { phase: 0 })
@@ -170,6 +172,7 @@ export class Game {
       .add("weapons", (world, ctx) => weaponsSystem(world, ctx.dt), { phase: 8 })
       .add("projectiles", (world, ctx) => projectilesSystem(world, ctx.dt), { phase: 10 })
       .add("enemies", (world, ctx) => enemiesSystem(world, ctx.dt), { phase: 20 })
+      .add("implants", (world, ctx) => implantSystem(world, ctx.dt), { phase: 20 })
       .add("status", (world, ctx) => statusSystem(world, ctx.dt), { phase: 22 })
       .add("totems", (world, ctx) => totemsSystem(world, ctx.dt), { phase: 24 })
       .add("roomFlow", (world) => roomFlowSystem(world), { phase: 30 })

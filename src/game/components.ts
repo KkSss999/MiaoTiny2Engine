@@ -157,3 +157,23 @@ export const Knock = defineComponent(
   () => ({ x: 0, y: 0, time: 0 }),
   defineShape("Knock", { x: s.number(), y: s.number(), time: s.number().min(0) }),
 );
+/** 已装备的植入体/刻印 */
+export const Implants = defineComponent(
+  "Implants",
+  () => ({ ids: [] as string[], cds: [] as { id: string; cd: number }[] }),
+  defineShape("Implants", {
+    ids: s.array(s.string()),
+    cds: s.array(s.object({ id: s.string(), cd: s.number().min(0) })),
+  }),
+);
+
+/** 护盾：先于血量吸收伤害 */
+export const Shield = defineComponent(
+  "Shield",
+  () => ({ value: 40, max: 40, timer: 0 }),
+  defineShape("Shield", {
+    value: s.number().min(0),
+    max: s.number().min(0),
+    timer: s.number().min(0),
+  }),
+);

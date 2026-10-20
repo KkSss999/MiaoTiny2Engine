@@ -1,6 +1,6 @@
 import type { Entity, World } from "@core/ecs/index.ts";
 import { defineEvent } from "@core/event/index.ts";
-import { EnemyTag, Health, Level, PlayerTag } from "./components.ts";
+import { EnemyTag, Health, Implants, Level, PlayerTag } from "./components.ts";
 import { damageTakenMul } from "./status.ts";
 import { runCtx } from "./query.ts";
 
@@ -74,8 +74,10 @@ function onPlayerDeath(world: World, entity: Entity): void {
   const run = runCtx(world);
   if (!pt || !hp) return;
 
-  // 复活刻印：每局一次
-  if (pt.race === "undead" && !pt.revived) {
+  // 复活刻印：需要装备
+  const implants = world.get(entity, Implants);
+  const canRevive = implants?.ids.includes("undead.revive") ?? false;
+  if (pt.race === "undead" && !pt.revived && canRevive) {
     pt.revived = true;
     hp.hp = hp.max * 0.5;
     pt.souls = 0;

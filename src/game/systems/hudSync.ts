@@ -1,5 +1,6 @@
 import type { World } from "@core/ecs/index.ts";
-import { Health, Level, Loadout, PlayerTag, Skills } from "../components.ts";
+import { Health, Implants, Level, Loadout, PlayerTag, Shield, Skills } from "../components.ts";
+import { IMPLANTS } from "../implants.ts";
 import { getAffix, getWeapon } from "../content.ts";
 import { SKILLS } from "../skills.ts";
 import { playerEntity, roomCtx, runCtx } from "../combat.ts";
@@ -51,6 +52,9 @@ export function hudSyncSystem(w: World, visited: () => number): void {
     weapon2: slotName(1),
     affix2: slotAffix(1),
     activeSlot: lo?.active ?? 0,
+    implants: (w.get(pe, Implants)?.ids ?? []).map((id) => IMPLANTS[id]?.name ?? id).join(" · "),
+    shield: Math.round(w.get(pe, Shield)?.value ?? 0),
+    shieldMax: Math.round(w.get(pe, Shield)?.max ?? 0),
     skillName: skill?.name ?? "",
     skillCd: first?.cd ?? 0,
     skillCdMax: skill?.cooldown ?? 1,

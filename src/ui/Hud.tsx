@@ -49,6 +49,15 @@ export function Hud() {
           <span className={s.skillCd <= 0 ? "text-bone/70" : "text-bone/30"}>{s.skillName}</span>
           {s.skillCd > 0 && <span className="text-bone/25">{s.skillCd.toFixed(1)}s</span>}
         </div>
+        {s.shieldMax > 0 && (
+          <div className="mt-1.5 flex items-center gap-2">
+            <span className="w-10 text-[10px] text-soul/60">SHLD</span>
+            <div className="h-1 flex-1 overflow-hidden rounded-full bg-white/10">
+              <div className="h-full rounded-full bg-soul/70" style={{ width: (s.shield / s.shieldMax) * 100 + "%" }} />
+            </div>
+          </div>
+        )}
+        <div className="mt-1.5 text-[9px] leading-relaxed tracking-wide text-bone/25">{s.implants}</div>
       </div>
 
       <div className="absolute bottom-5 left-1/2 flex -translate-x-1/2 gap-2 font-mono">

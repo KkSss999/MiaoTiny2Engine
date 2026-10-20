@@ -9,6 +9,7 @@ import { PlayerTag, Position } from "../components.ts";
 import { playerEntity, roomCtx } from "../combat.ts";
 import { spawnEnemy, spawnProp } from "../entities/factory.ts";
 import { RoomEntered } from "../events.ts";
+import { SCOPE } from "../resources.ts";
 
 const SAFE: RoomType[] = ["start", "shop", "rest", "event"];
 
@@ -77,6 +78,7 @@ export class WorldManager {
 
     this.scope?.dispose();
     this.scope = w.createScope(this.runLife);
+    w.setResource<EntityScope>(SCOPE, this.scope);
 
     const rng = makeRng(hashId(floor.seed, id));
     const build = buildRoom(floor.templateOf[id] ?? "open", node.doors, rng, node.type);

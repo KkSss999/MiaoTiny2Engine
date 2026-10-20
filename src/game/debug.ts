@@ -55,6 +55,8 @@ export function installDebugHooks(deps: DebugDeps): void {
         visited: deps.visited(),
         cleared: room.cleared,
         kills: run.kills,
+        revived: pe === undefined ? false : (w.get(pe, PlayerTag)?.revived ?? false),
+        shield: Math.round(hud.get().shield),
         level: pe === undefined ? 1 : (w.get(pe, Level)?.level ?? 1),
         xp: pe === undefined ? 0 : (w.get(pe, Level)?.xp ?? 0),
         over: run.over,
