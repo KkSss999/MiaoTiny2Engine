@@ -3,7 +3,7 @@ import type { Lifetime } from "#core/event/index.ts";
 import { DELTA, OPPOSITE, generateFloor, type Dir, type Floor, type RoomNode, type RoomType } from "../gen/floor.ts";
 import { buildRoom } from "../gen/templates.ts";
 import { boundaryWalls, entryPoint } from "../gen/boundary.ts";
-import { makeRng } from "../gen/prng.ts";
+import { makeRng } from "#core/rng/index.ts";
 import { ROOM_H, ROOM_W } from "../rooms.ts";
 import { PlayerTag, Position } from "../components.ts";
 import { playerEntity, roomCtx } from "../combat.ts";

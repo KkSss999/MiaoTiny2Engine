@@ -1,54 +1,38 @@
-export const input = {
-  keys: new Set<string>(),
-  mouseX: 0,
-  mouseY: 0,
-  down: false,
-  pressed: new Set<string>(),
+import { InputState } from "#core/input/index.ts";
 
-  isDown(code: string) {
-    return this.keys.has(code);
-  },
-  consume(code: string) {
-    if (this.pressed.has(code)) {
-      this.pressed.delete(code);
-      return true;
-    }
-    return false;
-  },
-  clearFrame() {
-    this.pressed.clear();
-  },
-};
+/**
+ * 全局输入状态。键位含义由各系统自己解释（移动、开火、技能……），
+ * 这里只负责把浏览器事件翻译成状态。
+ */
+export const input = new InputState();
 
-export function attachInput(canvas: HTMLCanvasElement) {
+export function attachInput(canvas: HTMLCanvasElement): () => void {
   const kd = (e: KeyboardEvent) => {
-    if (!e.repeat) input.pressed.add(e.code);
-    input.keys.add(e.code);
+    input.press(e.code, e.repeat);
     if (["Space", "KeyE", "KeyR"].includes(e.code)) e.preventDefault();
   };
-  const ku = (e: KeyboardEvent) => input.keys.delete(e.code);
+
+  const ku = (e: KeyboardEvent) => input.release(e.code);
+
   const pm = (e: PointerEvent) => {
-    const r = canvas.getBoundingClientRect();
-    input.mouseX = e.clientX - r.left;
-    input.mouseY = e.clientY - r.top;
-  };
-  const pd = (e: PointerEvent) => {
-    if (e.button === 0) input.down = true;
-    pm(e);
-  };
-  const pu = (e: PointerEvent) => {
-    if (e.button === 0) input.down = false;
-  };
-  const reset = () => {
-    input.keys.clear();
-    input.pressed.clear();
-    input.down = false;
+    const rect = canvas.getBoundingClientRect();
+    input.move(e.clientX - rect.left, e.clientY - rect.top);
   };
 
-  // 失焦 / 切走 / 手势取消：全部松开，否则会卡键
-  const blur = () => reset();
+  const pd = (e: PointerEvent) => {
+    if (e.button !== 0) return;
+    const rect = canvas.getBoundingClientRect();
+    input.pointerDown(e.clientX - rect.left, e.clientY - rect.top);
+  };
+
+  const pu = (e: PointerEvent) => {
+    if (e.button === 0) input.pointerUp();
+  };
+
+  // 失焦 / 切后台 / 手势取消：全部松开，否则会卡键
+  const blur = () => input.reset();
   const visibility = () => {
-    if (document.hidden) reset();
+    if (document.hidden) input.reset();
   };
 
   // 右键会弹出浏览器菜单，期间的 pointerup / keyup 全部丢失，
@@ -57,12 +41,10 @@ export function attachInput(canvas: HTMLCanvasElement) {
     const target = e.target as HTMLElement | null;
     if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) return;
     e.preventDefault();
-    input.down = false;
+    input.pointerUp();
   };
 
-  const pointerCancel = () => {
-    input.down = false;
-  };
+  const pointerCancel = () => input.pointerUp();
 
   window.addEventListener("keydown", kd);
   window.addEventListener("keyup", ku);

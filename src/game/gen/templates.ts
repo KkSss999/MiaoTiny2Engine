@@ -1,6 +1,6 @@
 import { ROOM_W, ROOM_H, type Rect, type Spawn, type PropSpawn, type EnemyKind } from "../rooms.ts";
 import type { Dir, RoomType } from "./floor.ts";
-import type { Rng } from "./prng.ts";
+import type { Rng } from "#core/rng/index.ts";
 import { getTemplate } from "../content.ts";
 
 export type { Slot, RoomTemplate } from "./templateData.ts";

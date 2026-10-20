@@ -1,5 +1,5 @@
 import { Graphics } from "pixi.js";
-import { makeRng } from "../game/gen/prng.ts";
+import { makeRng } from "#core/rng/index.ts";
 
 type Particle = {
   x: number;

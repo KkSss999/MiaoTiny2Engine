@@ -1,4 +1,7 @@
-/** mulberry32 —— 种子化随机，保证同一 seed 生成同一张图 */
+/**
+ * 种子化随机（mulberry32）。
+ * 纯算法，不含任何游戏语义：地图生成、粒子、镜头抖动共用。
+ */
 export type Rng = {
   next: () => number;
   int: (min: number, max: number) => number;

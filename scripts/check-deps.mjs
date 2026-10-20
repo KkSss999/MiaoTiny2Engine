@@ -11,6 +11,8 @@ const ALLOWED = {
   event: [],
   time: [],
   nav: [],
+  rng: [],
+  input: [],
   db: ["event"],
   ecs: ["event", "db"],
   fsm: ["event"],
@@ -72,4 +74,4 @@ if (violations.length > 0) {
   for (const v of violations) console.error("  ✗ " + v);
   process.exit(1);
 }
-console.log("✓ 依赖方向正确：event/time/nav ← db ← ecs，event ← fsm");
+console.log("✓ 依赖方向正确：event/time/nav/rng/input ← db ← ecs，event ← fsm");

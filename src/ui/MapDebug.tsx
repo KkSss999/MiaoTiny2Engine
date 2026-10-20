@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { generateFloor, checkFloor, type Floor, type RoomNode, type RoomType } from "../game/gen/floor";
 import { buildRoom } from "../game/gen/templates";
-import { makeRng } from "../game/gen/prng";
+import { makeRng } from "#core/rng/index.ts";
 import { ROOM_W, ROOM_H } from "../game/rooms";
 
 const TYPE_COLOR: Record<RoomType, string> = {

@@ -1,4 +1,4 @@
-import { makeRng, type Rng } from "./prng";
+import { makeRng, type Rng } from "#core/rng/index.ts";
 
 export const DIRS = ["N", "E", "S", "W"] as const;
 export type Dir = (typeof DIRS)[number];
