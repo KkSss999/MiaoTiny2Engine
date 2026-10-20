@@ -24,6 +24,8 @@ import { Particles } from "./particles.ts";
 import { Tweens } from "./tweens.ts";
 import { RoomView } from "./roomView.ts";
 import { shakeOffset } from "./camera.ts";
+import { Nameplates } from "./nameplates.ts";
+import { BossBar } from "./bossBar.ts";
 
 type SpriteRefValue = {
   spriteId: string;
@@ -48,6 +50,8 @@ export class Renderer {
   private room = new RoomView();
   private msg: Text;
   private msgTimer = 0;
+  private plates: Nameplates;
+  private bossBar: BossBar;
   private prev = new Map<Entity, { x: number; y: number }>();
 
   constructor(app: Application, world: World) {
@@ -55,6 +59,8 @@ export class Renderer {
     this.world = world;
     this.layers = createLayers();
     this.views = new ViewRegistry(world, this.layers);
+    this.plates = new Nameplates(this.layers.overlay);
+    this.bossBar = new BossBar();
     this.msg = new Text({
       text: "",
       style: { fontFamily: "ui-monospace, monospace", fontSize: 22, fill: 0xe8e2d0, align: "center" },
@@ -70,6 +76,7 @@ export class Renderer {
     this.layers.shadow.addChild(this.room.wallRoot);
     this.layers.fx.addChild(this.particles.view);
     this.app.stage.addChild(this.msg);
+    this.bossBar.attach(this.app.stage);
     this.views.bind();
 
     // 实体销毁时清掉挂在它身上的临时表现状态（补间等）
@@ -182,6 +189,13 @@ export class Renderer {
       if (view) view.alpha = pt.invuln > 0 && Math.floor(pt.invuln * 20) % 2 === 0 ? 0.35 : 1;
     });
 
+    const posOf = (e: Entity, fallback: { x: number; y: number }) => {
+      const prev = this.prev.get(e) ?? fallback;
+      return { x: prev.x + (fallback.x - prev.x) * k, y: prev.y + (fallback.y - prev.y) * k };
+    };
+    this.plates.sync(this.world, posOf);
+    this.bossBar.sync(this.world, this.app.screen.width, this.app.screen.height, dt);
+
     this.tweens.update(dt);
     this.particles.update(dt);
     this.particles.draw();
@@ -197,6 +211,7 @@ export class Renderer {
   }
 
   destroy(): void {
+    this.bossBar.reset();
     this.views.destroyAll();
     this.particles.clear();
     this.root.destroy({ children: true });
