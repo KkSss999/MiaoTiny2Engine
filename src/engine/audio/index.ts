@@ -1,7 +1,10 @@
+import { WebAudioPlayer } from "./webAudio.ts";
+
 /**
  * 音频端口：游戏只发事件、说"要什么声音"，这一层决定"怎么响"。
  *
- * 先给出接口 + 静音实现，接音频文件时替换实现即可，玩法代码不动。
+ * 实现：webAudio.ts（manifest 的 audio 条目 → WebAudio）；
+ * 静音实现是降级路径——浏览器不支持、或 AudioContext 建不起来时用它。
  */
 export type SfxId = string;
 
@@ -12,6 +15,11 @@ export interface AudioPort {
   setVolume(master: number): void;
   /** 浏览器要求用户交互后才能出声，这里如实告知 */
   readonly unlocked: boolean;
+  /**
+   * 在首次用户手势（pointerdown / keydown）里调用：WebAudio 的 AudioContext
+   * 只能在手势中 resume。可选——静音实现不需要，调用方写 audio.unlock?.()。
+   */
+  unlock?(): void;
   dispose(): void;
 }
 
@@ -20,10 +28,18 @@ export const silentAudio: AudioPort = {
   play: () => {},
   setVolume: () => {},
   unlocked: false,
+  unlock: () => {},
   dispose: () => {},
 };
 
+/** 优先真实现；AudioContext 建不起来（无 WebAudio / headless）就退回静音 */
 export function createAudio(): AudioPort {
-  // TODO(P2): 按 manifest 的 audio 条目建 WebAudio 播放器
-  return silentAudio;
+  try {
+    return new WebAudioPlayer();
+  } catch (err) {
+    console.warn("[audio] WebAudio 不可用，退回静音实现", err);
+    return silentAudio;
+  }
 }
+
+export { WebAudioPlayer } from "./webAudio.ts";

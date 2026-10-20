@@ -8,5 +8,6 @@
   "skill": ["KeyE"],
   "swap": ["KeyQ"],
   "slot1": ["Digit1"],
-  "slot2": ["Digit2"]
+  "slot2": ["Digit2"],
+  "restart": ["KeyR"]
 }

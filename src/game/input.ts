@@ -19,10 +19,14 @@ export const ACTIONS_MAP: ActionMap = actionsJson;
  */
 export const actions = new InputActions(input, ACTIONS_MAP);
 
+/** 映射表里出现过的物理键，用于阻止浏览器默认行为 */
+const GAME_KEYS = new Set(Object.values(ACTIONS_MAP).flat());
+
 export function attachInput(canvas: HTMLCanvasElement): () => void {
   const kd = (e: KeyboardEvent) => {
     input.press(e.code, e.repeat);
-    if (["Space", "KeyE", "KeyR"].includes(e.code)) e.preventDefault();
+    // 凡是绑定了动作的键都不让浏览器处理（空格滚页、方向键滚动等）
+    if (GAME_KEYS.has(e.code)) e.preventDefault();
   };
 
   const ku = (e: KeyboardEvent) => input.release(e.code);

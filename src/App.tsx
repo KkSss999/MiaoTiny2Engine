@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Game } from "./game/game";
+import { Game } from "./app/game";
 import { api } from "./game/api";
 import { Hud } from "./ui/Hud";
 import { MapDebug } from "./ui/MapDebug";

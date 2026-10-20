@@ -194,6 +194,11 @@ export function installDebugHooks(deps: DebugDeps): void {
     }, "在脚下掉一把武器（可指定武器与词条）")
     .register("spawn", (typeId: string) => deps.spawn(typeId), "在身边生成一个敌人")
     .register("spawnAt", (typeId: string, x: number, y: number) => deps.spawnAt(typeId, x, y), "在指定位置生成敌人")
+    .register("over", (won: boolean = false) => {
+      const run = runCtx(w);
+      run.over = !won;
+      run.won = won;
+    }, "直接结束本局（测结算/重开）")
     .register("reward", () => deps.openReward(), "打开三选一")
     .register("gotoRoom", (id: string) => {
       const floor = deps.floor();

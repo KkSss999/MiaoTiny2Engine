@@ -12,8 +12,9 @@ const TOP_ALLOWED = {
   core: [],
   content: ["core"],
   engine: ["core", "content"],
-  // TODO: game.ts 是编排层（装配 pixi），拆分到 src/app 后要收紧成 ["core","content","engine"]
-  game: ["core", "content", "engine", "render"],
+  game: ["core", "content", "engine"],
+  // app 是装配层：把 game / render / engine 拼起来，唯一可以认识所有实现的地方
+  app: ["core", "content", "engine", "game", "render"],
   render: ["core", "content", "engine", "game"],
   // ui 是最上层；开发页面允许读 render 的只读工具
   ui: ["core", "content", "engine", "game", "render"],

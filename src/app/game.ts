@@ -2,44 +2,47 @@ import { Application } from "pixi.js";
 import { Schedule, World } from "#core/ecs/index.ts";
 import { Lifetime } from "#core/kernel/index.ts";
 import { Transitioned } from "#core/agent/index.ts";
-import { attachInput, input } from "./input.ts";
-import { hud } from "./store.ts";
-import { api, type Race } from "./api.ts";
-import { ROOM_H, ROOM_W } from "./rooms.ts";
-import type { RoomNode } from "./gen/floor.ts";
-import { PlayerTag, Position } from "./components.ts";
+import { actions, attachInput, input } from "../game/input.ts";
+import { hud } from "../game/store.ts";
+import { api, type Race } from "../game/api.ts";
+import { ROOM_H, ROOM_W } from "../game/rooms.ts";
+import type { RoomNode } from "../game/gen/floor.ts";
+import { PlayerTag, Position } from "../game/components.ts";
 import { Renderer } from "../render/Renderer.ts";
 import { viewZoom } from "../render/camera.ts";
 import { prepareAssets } from "../render/assets.ts";
 import { installFx } from "../render/fx.ts";
-import { EffectQueue } from "./effects.ts";
+import { EffectQueue } from "../game/effects.ts";
 import {
   DEBUG, EFFECTS, ROOM, RUN, VIEW,
   makeRoomCtx, makeRunCtx,
   type DebugCtx, type RoomCtx, type RunCtx, type ViewCtx,
-} from "./resources.ts";
-import { playerEntity, roomCtx, runCtx } from "./combat.ts";
-import { playerControlSystem } from "./systems/playerControl.ts";
-import { projectilesSystem } from "./systems/projectiles.ts";
-import { enemiesSystem } from "./systems/enemies.ts";
-import { roomFlowSystem } from "./systems/roomFlow.ts";
-import { hudSyncSystem } from "./systems/hudSync.ts";
-import { skillsSystem } from "./systems/skills.ts";
-import { statusSystem } from "./systems/status.ts";
-import { installDamageRules } from "./damage.ts";
-import { RoomCleared, RoomEntered } from "./events.ts";
-import { WorldManager } from "./world/WorldManager.ts";
-import { spawnBullet, spawnDrop, spawnEnemy, spawnPlayer, spawnTotem } from "./entities/factory.ts";
-import { weaponsSystem } from "./systems/weapons.ts";
-import { totemsSystem } from "./systems/totems.ts";
-import { navSystem } from "./systems/nav.ts";
-import { animationSystem } from "./systems/animation.ts";
-import { rollDrop } from "./systems/weapons.ts";
-import { installAffixes } from "./affixes.ts";
-import { implantSystem, installImplants } from "./implants.ts";
-import { applyReward, buildRewards, rewardAffix, type RewardOption } from "./rewards.ts";
-import { installDebugHooks } from "./debug.ts";
-import { connectDevChannel } from "./devChannel.ts";
+} from "../game/resources.ts";
+import { playerEntity, roomCtx, runCtx } from "../game/combat.ts";
+import { playerControlSystem } from "../game/systems/playerControl.ts";
+import { projectilesSystem } from "../game/systems/projectiles.ts";
+import { enemiesSystem } from "../game/systems/enemies.ts";
+import { roomFlowSystem } from "../game/systems/roomFlow.ts";
+import { hudSyncSystem } from "../game/systems/hudSync.ts";
+import { skillsSystem } from "../game/systems/skills.ts";
+import { statusSystem } from "../game/systems/status.ts";
+import { installDamageRules } from "../game/damage.ts";
+import { RoomCleared, RoomEntered } from "../game/events.ts";
+import { createAudio } from "../engine/audio/index.ts";
+import { installAudio, unlockOnGesture } from "../game/audioBridge.ts";
+import { bindAudio } from "../game/settings.ts";
+import { WorldManager } from "../game/world/WorldManager.ts";
+import { spawnBullet, spawnDrop, spawnEnemy, spawnPlayer, spawnTotem } from "../game/entities/factory.ts";
+import { weaponsSystem } from "../game/systems/weapons.ts";
+import { totemsSystem } from "../game/systems/totems.ts";
+import { navSystem } from "../game/systems/nav.ts";
+import { animationSystem } from "../game/systems/animation.ts";
+import { rollDrop } from "../game/systems/weapons.ts";
+import { installAffixes } from "../game/affixes.ts";
+import { implantSystem, installImplants } from "../game/implants.ts";
+import { applyReward, buildRewards, rewardAffix, type RewardOption } from "../game/rewards.ts";
+import { installDebugHooks } from "../game/debug.ts";
+import { connectDevChannel } from "../game/devChannel.ts";
 import { Loop } from "#core/kernel/index.ts";
 
 const STEP_MS = 1000 / 60;
@@ -54,6 +57,7 @@ export class Game {
   private renderer!: Renderer;
   private detach?: () => void;
   private detachDev?: () => void;
+  private detachAudio?: () => void;
 
   private world = new World();
   private schedule = new Schedule();
@@ -97,6 +101,12 @@ export class Game {
     installFx(this.world, this.renderer);
 
     this.setupWorld();
+    // 音频：真实现 + 事件桥；浏览器要用户手势后才出声，首次交互解锁
+    const audio = createAudio();
+    bindAudio(audio);
+    const releaseGesture = unlockOnGesture(audio);
+    const detachBridge = installAudio(this.world, audio);
+    this.detachAudio = () => { releaseGesture(); detachBridge(); audio.dispose(); };
     // 开发期：接编辑器热更新（生产构建里是空函数）
     this.detachDev = connectDevChannel();
     this.detach = attachInput(this.app.canvas);
@@ -279,6 +289,7 @@ export class Game {
     if (this.onEscape) window.removeEventListener("keydown", this.onEscape);
     this.detach?.();
     this.detachDev?.();
+    this.detachAudio?.();
     if (!this.app) return;
     this.app.ticker.remove(this.onTick);
     this.life.dispose();
@@ -345,7 +356,7 @@ export class Game {
     }
 
     if (run.over || run.won) {
-      if (input.consume("KeyR")) this.startRun(this.playerRace() ?? "human");
+      if (actions.pressed("restart")) this.startRun(this.playerRace() ?? "human");
       input.clearFrame();
       return;
     }
