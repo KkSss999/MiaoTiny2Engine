@@ -1,0 +1,96 @@
+import type { Entity, EntityScope, World } from "@core/ecs/index.ts";
+import { createMachine } from "@core/fsm/index.ts";
+import type { Race } from "../api.ts";
+import type { Effect } from "../effects.ts";
+import type { EnemyKind } from "../rooms.ts";
+import { ROOM_H } from "../rooms.ts";
+import { ENEMY_AI } from "../ai/enemyAi.ts";
+import { PLAYER_FSM } from "../ai/playerAi.ts";
+import {
+  Aim, Brain, BulletTag, Circle, EnemyTag, Health, PlayerTag, Position, PropTag, SpriteRef, Velocity,
+} from "../components.ts";
+
+type BulletEffect = Extract<Effect, { type: "bullet" }>;
+const rnd = (a: number, b: number) => a + Math.random() * (b - a);
+
+/** 玩家属于整个 run，不进房间作用域 */
+export function spawnPlayer(world: World, race: Race): Entity {
+  const e = world.spawn(Position);
+  world.add(e, Position, { x: 150, y: ROOM_H / 2 });
+  world.add(e, Circle, { r: 16 });
+  world.add(e, Health, { hp: 100, max: 100 });
+  world.add(e, Aim);
+  world.add(e, PlayerTag, {
+    race,
+    fireCd: 0, dashCd: 0, dashX: 1, dashY: 0,
+    dashes: race === "human" ? 2 : 1,
+    maxDashes: race === "human" ? 2 : 1,
+    invuln: 0, heat: 0, souls: race === "undead" ? 30 : 0,
+    eCd: 0, overheated: false, revived: false,
+  });
+  world.add(e, Brain, createMachine(PLAYER_FSM));
+  world.add(e, SpriteRef, {
+    spriteId: race === "human" ? "player.human" : "player.undead",
+    layer: "actor",
+    rotation: "aim",
+    scale: 1,
+    popIn: false,
+  });
+  return e;
+}
+
+export function spawnEnemy(world: World, scope: EntityScope, kind: EnemyKind, x: number, y: number): Entity {
+  const base = kind === "boss"
+    ? { hp: 900, r: 60, speed: 70 }
+    : kind === "turret"
+      ? { hp: 60, r: 18, speed: 0 }
+      : { hp: 45, r: 16, speed: 118 };
+
+  const e = scope.spawn(Position);
+  world.add(e, Position, { x, y });
+  world.add(e, Circle, { r: base.r });
+  world.add(e, Health, { hp: base.hp, max: base.hp });
+  world.add(e, EnemyTag, { kind, speed: base.speed, cd: rnd(0.4, 1.4), flash: 0 });
+  const brain = ENEMY_AI[kind];
+  if (brain) world.add(e, Brain, createMachine(brain));
+  world.add(e, SpriteRef, {
+    spriteId: kind === "boss" ? "enemy.boss" : kind === "turret" ? "enemy.turret" : "enemy.melee",
+    layer: "actor",
+    rotation: "none",
+    scale: 1,
+    popIn: true,
+  });
+  return e;
+}
+
+export function spawnBullet(world: World, scope: EntityScope, effect: BulletEffect): Entity {
+  const e = scope.spawn(Position);
+  world.add(e, Position, { x: effect.x, y: effect.y });
+  world.add(e, Velocity, { x: Math.cos(effect.angle) * effect.speed, y: Math.sin(effect.angle) * effect.speed });
+  world.add(e, Circle, { r: effect.r });
+  world.add(e, BulletTag, { dmg: effect.dmg, friendly: effect.friendly, life: 1.6, speed: effect.speed });
+  world.add(e, SpriteRef, {
+    spriteId: effect.friendly ? "bullet.friendly" : "bullet.hostile",
+    layer: "actor",
+    rotation: "velocity",
+    scale: 1,
+    popIn: false,
+  });
+  return e;
+}
+
+export function spawnProp(world: World, scope: EntityScope, kind: "barrel" | "crystal", x: number, y: number): Entity {
+  const e = scope.spawn(Position);
+  world.add(e, Position, { x, y });
+  world.add(e, Circle, { r: 22 });
+  world.add(e, Health, { hp: 30, max: 30 });
+  world.add(e, PropTag, { kind, hp: 30 });
+  world.add(e, SpriteRef, {
+    spriteId: kind === "barrel" ? "prop.barrel" : "prop.crystal",
+    layer: "prop",
+    rotation: "none",
+    scale: 1,
+    popIn: false,
+  });
+  return e;
+}

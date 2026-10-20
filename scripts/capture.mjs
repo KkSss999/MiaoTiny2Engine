@@ -1,0 +1,84 @@
+// 截图：可选 --auto 开启自动开火，用于抓战斗画面
+import { spawn } from "node:child_process";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+const url = process.argv[2] ?? "http://127.0.0.1:5199/";
+const out = process.argv[3] ?? "/tmp/cap.png";
+const auto = process.argv.includes("--auto");
+const waitMs = Number(process.argv.find((a) => a.startsWith("--wait="))?.split("=")[1] ?? 2500);
+const port = 9700 + Math.floor(Math.random() * 200);
+const profile = mkdtempSync(join(tmpdir(), "cdp-"));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+const chrome = spawn("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", [
+  "--headless=new", "--no-sandbox", "--hide-scrollbars",
+  `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`,
+  "--window-size=1440,900", "--enable-unsafe-swiftshader", "--use-gl=angle", "--use-angle=swiftshader",
+  "about:blank",
+], { stdio: ["ignore", "ignore", "ignore"] });
+
+async function wsUrl() {
+  for (let i = 0; i < 80; i++) {
+    try {
+      const list = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json();
+      const p = list.find((t) => t.type === "page");
+      if (p?.webSocketDebuggerUrl) return p.webSocketDebuggerUrl;
+    } catch {}
+    await sleep(150);
+  }
+  throw new Error("no chrome");
+}
+
+const ws = new WebSocket(await wsUrl());
+await new Promise((r) => (ws.onopen = r));
+let id = 0;
+const pending = new Map();
+ws.onmessage = (ev) => {
+  const m = JSON.parse(ev.data);
+  if (m.id && pending.has(m.id)) { pending.get(m.id)(m.result ?? m.error); pending.delete(m.id); }
+};
+const send = (method, params = {}) => new Promise((res) => { const i = ++id; pending.set(i, res); ws.send(JSON.stringify({ id: i, method, params })); });
+const evalJs = (e) => send("Runtime.evaluate", { expression: e, returnByValue: true });
+
+await send("Runtime.enable");
+await send("Page.enable");
+await send("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+await send("Page.navigate", { url });
+// 等游戏实例就绪（首屏要等 vite 预构建 + Pixi 初始化）
+for (let i = 0; i < 60; i++) {
+  const r = await evalJs("!!window.__dbg");
+  if (r?.result?.value === true) break;
+  await sleep(250);
+}
+if (auto) await evalJs("window.__dbg.auto(true)");
+if (process.argv.includes("--god")) await evalJs("window.__dbg.god()");
+if (process.argv.includes("--boss")) {
+  await evalJs("window.__dbg.gotoRoom(window.__dbg.state().bossId)");
+}
+const gotoRoom = process.argv.find((a) => a.startsWith("--goto="))?.split("=")[1];
+if (gotoRoom) await evalJs(`window.__dbg.gotoRoom('${gotoRoom}')`);
+const tp = process.argv.find((a) => a.startsWith("--tp="))?.split("=")[1];
+if (tp) {
+  const [x, y] = tp.split(",").map(Number);
+  await evalJs(`window.__dbg.teleport(${x}, ${y})`);
+}
+const walkKey = process.argv.find((a) => a.startsWith("--walk="))?.split("=")[1];
+if (walkKey) await evalJs(`window.__dbg.walk('${walkKey}')`);
+await sleep(waitMs);
+for (const arg of process.argv.filter((a) => a.startsWith("--key="))) {
+  const code = arg.slice("--key=".length);
+  await evalJs(`window.dispatchEvent(new KeyboardEvent('keydown', { code: '${code}', bubbles: true }))`);
+  await sleep(400);
+}
+const probe = process.argv.find((a) => a.startsWith("--probe="))?.slice("--probe=".length);
+if (probe) console.log("probe:", (await evalJs(probe))?.result?.value);
+const st = await evalJs("JSON.stringify(window.__dbg ? window.__dbg.state() : null)");
+console.log("state:", st?.result?.value);
+const shot = await send("Page.captureScreenshot", { format: "png" });
+writeFileSync(out, Buffer.from(shot.data, "base64"));
+console.log("wrote", out);
+ws.close();
+chrome.kill();
+process.exit(0);

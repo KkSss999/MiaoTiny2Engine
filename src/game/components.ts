@@ -1,0 +1,78 @@
+import { defineComponent } from "@core/ecs/index.ts";
+import { defineShape, s } from "@core/db/index.ts";
+import type { EnemyKind } from "./rooms";
+import type { Race } from "./api";
+import type { Layer } from "./layers";
+import type { MachineData } from "@core/fsm/index.ts";
+
+export const Position = defineComponent(
+  "Position",
+  () => ({ x: 0, y: 0 }),
+  defineShape("Position", { x: s.number(), y: s.number() }),
+);
+export const Velocity = defineComponent("Velocity", () => ({ x: 0, y: 0 }));
+export const Circle = defineComponent("Circle", () => ({ r: 16 }));
+export const Health = defineComponent(
+  "Health",
+  () => ({ hp: 100, max: 100 }),
+  defineShape("Health", { hp: s.number(), max: s.number() }),
+);
+
+export const PlayerTag = defineComponent("PlayerTag", () => ({
+  race: "human" as Race,
+  fireCd: 0,
+  dashCd: 0,
+  dashX: 1,
+  dashY: 0,
+  dashes: 2,
+  maxDashes: 2,
+  invuln: 0,
+  heat: 0,
+  souls: 0,
+  eCd: 0,
+  overheated: false,
+  revived: false,
+}));
+
+export const Aim = defineComponent("Aim", () => ({ angle: 0 }));
+
+export const EnemyTag = defineComponent("EnemyTag", () => ({
+  kind: "melee" as EnemyKind,
+  speed: 0,
+  cd: 0,
+  flash: 0,
+}));
+
+/** 行为状态机：纯数据，可序列化 */
+export const Brain = defineComponent<MachineData>(
+  "Brain",
+  () => ({ state: "", time: 0, stack: [], triggers: [] }),
+  defineShape("Brain", {
+    state: s.string(),
+    time: s.number(),
+    stack: s.array(s.object({ state: s.string(), time: s.number() })),
+    triggers: s.array(s.string()),
+  }),
+);
+
+export const BulletTag = defineComponent("BulletTag", () => ({
+  dmg: 12,
+  friendly: true,
+  life: 1.6,
+  speed: 900,
+}));
+
+export const PropTag = defineComponent("PropTag", () => ({
+  kind: "barrel" as "barrel" | "crystal",
+  hp: 30,
+}));
+
+/** 表现层引用：逻辑只说要什么，怎么画由 render 层决定 */
+export const SpriteRef = defineComponent("SpriteRef", () => ({
+  spriteId: "debug.box",
+  layer: "actor" as Layer,
+  rotation: "none" as "none" | "aim" | "velocity",
+  scale: 1,
+  /** 出现时是否播弹出动画（表现层读取） */
+  popIn: false,
+}));

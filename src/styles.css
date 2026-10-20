@@ -1,0 +1,20 @@
+@import "tailwindcss";
+
+@theme {
+  --color-void: #0a0e14;
+  --color-rust: #b4552d;
+  --color-brass: #c9a227;
+  --color-bone: #e8e2d0;
+  --color-soul: #39e0c8;
+  --color-blood: #d7263d;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  background: var(--color-void);
+  overflow: hidden;
+  -webkit-user-select: none;
+  user-select: none;
+}

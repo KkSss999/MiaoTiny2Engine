@@ -1,0 +1,11 @@
+export const ROOM_W = 1800;
+export const ROOM_H = 1100;
+/** 门洞宽度 */
+export const DOOR_GAP = 170;
+/** 外墙厚度 */
+export const WALL_T = 44;
+
+export type Rect = { x: number; y: number; w: number; h: number };
+export type EnemyKind = "melee" | "turret" | "boss";
+export type Spawn = { x: number; y: number; kind: EnemyKind };
+export type PropSpawn = { x: number; y: number; kind: "barrel" | "crystal" };
