@@ -67,6 +67,7 @@ export function installDebugHooks(deps: DebugDeps): void {
         enemies,
         enemyHp,
         bullets: w.query(BulletTag).count,
+        shots: run.shots,
         auto: w.resource<DebugCtx>(DEBUG).autoAim,
         down: input.down,
         race: pe === undefined ? null : (w.get(pe, PlayerTag)?.race ?? null),

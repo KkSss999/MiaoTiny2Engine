@@ -104,7 +104,7 @@ export function buildRoom(templateId: string, doors: Dir[], rng: Rng, type: Room
     while (spawns.length < 5) {
       const cand = { x: rng.int(300, ROOM_W - 300), y: rng.int(300, ROOM_H - 300) };
       if (walls.some((w) => overlap(w, { x: cand.x - 20, y: cand.y - 20, w: 40, h: 40 }))) continue;
-      spawns.push({ x: cand.x, y: cand.y, kind: rng.chance(0.35) ? "turret" : rng.chance(0.5) ? "charger" : "melee" });
+      spawns.push({ x: cand.x, y: cand.y, kind: rng.chance(0.3) ? "turret" : rng.chance(0.4) ? "sentry" : rng.chance(0.5) ? "charger" : "melee" });
     }
   }
 

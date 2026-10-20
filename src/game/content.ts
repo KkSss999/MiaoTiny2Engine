@@ -46,9 +46,10 @@ const WEAPONS = [
 
 const ENEMIES = [
   { id: "melee", name: "锈蚀者", sprite: "enemy.melee", hp: 45, radius: 16, speed: 118, damage: 9, behavior: "chaser", xp: 6 },
+  { id: "sentry", name: "游猎哨兵", sprite: "enemy.sentry", hp: 55, radius: 16, speed: 130, damage: 8, behavior: "kiter", xp: 9, keepDistance: 260, fanCount: 3, fanSpread: 0.42, projectileSpeed: 420, projectileDamage: 7, projectileInterval: 1.9, projectileRange: 620 },
   { id: "charger", name: "冲撞傀儡", sprite: "enemy.charger", hp: 70, radius: 20, speed: 85, damage: 12, behavior: "charger", xp: 10, chargeSpeed: 560, chargeDamage: 18, chargeInterval: 2.6, chargeDuration: 0.4 },
   { id: "turret", name: "哨戒炮", sprite: "enemy.turret", hp: 60, radius: 18, speed: 0, damage: 0, behavior: "turret", xp: 8, projectileSpeed: 380, projectileDamage: 8, projectileInterval: 1.7, projectileRange: 900 },
-  { id: "boss", name: "失控工业傀儡", sprite: "enemy.boss", hp: 900, radius: 60, speed: 70, damage: 16, behavior: "boss", xp: 60, chargeSpeed: 620, chargeDamage: 16, chargeInterval: 3.2, chargeDuration: 0.45, summonId: "melee", summonCount: 2 },
+  { id: "boss", name: "失控工业傀儡", sprite: "enemy.boss", hp: 900, radius: 60, speed: 70, damage: 16, behavior: "boss", xp: 60, chargeSpeed: 620, chargeDamage: 16, chargeInterval: 3.2, chargeDuration: 0.45, summonId: "melee", summonCount: 2, radialCount: 8, projectileSpeed: 300, projectileDamage: 10, projectileInterval: 3.2 },
 ];
 
 const AFFIXES = [
@@ -114,6 +115,13 @@ export const EnemyTable = defineTable("enemies", {
   chargeDuration: s.number().min(0).default(0.45),
   summonId: s.string().default(""),
   summonCount: s.number().int().min(0).default(0),
+  /** 与目标保持的距离（0 = 不保持） */
+  keepDistance: s.number().min(0).default(0),
+  /** 每次开火的扇形发数 */
+  fanCount: s.number().int().min(1).default(1),
+  fanSpread: s.number().min(0).default(0),
+  /** 环形弹幕发数（0 = 不用） */
+  radialCount: s.number().int().min(0).default(0),
 });
 
 export const contentDb = new Database();
@@ -178,6 +186,10 @@ export type EnemyDef = {
   chargeDuration: number;
   summonId: string;
   summonCount: number;
+  keepDistance: number;
+  fanCount: number;
+  fanSpread: number;
+  radialCount: number;
 };
 
 export const getEnemy = (id: string): EnemyDef | undefined => EnemyTable.get(id) as EnemyDef | undefined;

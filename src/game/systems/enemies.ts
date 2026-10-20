@@ -3,8 +3,10 @@ import { step } from "@core/fsm/index.ts";
 import { Brain, Circle, EnemyTag, Health, Knock, Position } from "../components.ts";
 import { damagePlayer, effects, moveWithWalls, playerEntity, roomCtx } from "../combat.ts";
 import { ENEMY_BEHAVIORS, type EnemyCtx } from "../ai/enemyAi.ts";
+import { sense } from "../ai/perception.ts";
 import { getEnemy } from "../content.ts";
 import { speedMul } from "../status.ts";
+import { runCtx } from "../query.ts";
 import { ROOM_H, ROOM_W } from "../rooms.ts";
 
 const clamp = (v: number, a: number, b: number) => (v < a ? a : v > b ? b : v);
@@ -13,7 +15,6 @@ export function enemiesSystem(w: World, dt: number): void {
   const room = roomCtx(w);
   const pe = playerEntity(w);
   if (pe === undefined) return;
-  const ppos = w.require(pe, Position);
   const pcircle = w.require(pe, Circle);
 
   w.query(Position, Circle, Health, EnemyTag, Brain).forEach((e, pos, circle, hp, tag, brain) => {
@@ -31,27 +32,28 @@ export function enemiesSystem(w: World, dt: number): void {
       knock.y *= 0.88;
     }
 
-    const dx = ppos.x - pos.x;
-    const dy = ppos.y - pos.y;
-    const dist = Math.hypot(dx, dy) || 1;
-
     const def = getEnemy(tag.typeId) ?? getEnemy("melee");
     if (!def) return;
+
+    // 感知一次，行为只消费结果
+    const threat = sense(w, pos, pe, room.walls);
+    const slow = speedMul(w, e);
 
     const ctx: EnemyCtx = {
       dt,
       def,
-      dx,
-      dy,
-      dist,
       radius: circle.r,
       playerRadius: pcircle.r,
-      speed: tag.speed * speedMul(w, e),
       cd: tag.cd,
-      move: (ux, uy) => moveWithWalls(room.walls, pos, circle.r, ux * tag.speed * dt, uy * tag.speed * dt),
-      charge: (ux, uy) => moveWithWalls(room.walls, pos, circle.r, ux * 620 * dt, uy * 620 * dt),
-      shoot: (angle, speed, dmg) =>
-        effects(w).push({ type: "bullet", x: pos.x, y: pos.y, angle, speed, dmg, friendly: false, color: 0xd7263d, r: 5 }),
+      threat,
+      move: (ux, uy) =>
+        moveWithWalls(room.walls, pos, circle.r, ux * def.speed * slow * dt, uy * def.speed * slow * dt),
+      charge: (ux, uy) =>
+        moveWithWalls(room.walls, pos, circle.r, ux * def.chargeSpeed * slow * dt, uy * def.chargeSpeed * slow * dt),
+      shoot: (angle, speed, dmg) => {
+        runCtx(w).shots += 1;
+        effects(w).push({ type: "bullet", x: pos.x, y: pos.y, angle, speed, dmg, friendly: false, color: 0xd7263d, r: 5 });
+      },
       hitPlayer: (dmg) => damagePlayer(w, dmg),
       spawnAdd: () =>
         effects(w).push({

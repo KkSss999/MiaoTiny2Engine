@@ -16,6 +16,7 @@ export type RoomCtx = {
 export type RunCtx = {
   seed: number;
   kills: number;
+  shots: number;
   trauma: number;
   freeze: number;
   over: boolean;
@@ -37,5 +38,5 @@ export function makeRoomCtx(): RoomCtx {
 }
 
 export function makeRunCtx(): RunCtx {
-  return { seed: 1, kills: 0, trauma: 0, freeze: 0, over: false, won: false };
+  return { seed: 1, kills: 0, shots: 0, trauma: 0, freeze: 0, over: false, won: false };
 }
