@@ -31,6 +31,7 @@ export const RUN = "run";
 export const EFFECTS = "effects";
 export const VIEW = "view";
 export const SCOPE = "scope";
+export const NAV = "nav";
 export const DEBUG = "debug";
 
 export function makeRoomCtx(): RoomCtx {

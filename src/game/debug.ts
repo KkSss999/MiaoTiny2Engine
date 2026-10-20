@@ -8,6 +8,8 @@ import { hud } from "./store.ts";
 import { applyStatus } from "./status.ts";
 import { grantXp } from "./damage.ts";
 import { equip } from "./systems/weapons.ts";
+import { cellXOf, cellYOf, flowDir, type NavGrid } from "./nav.ts";
+import { NAV } from "./resources.ts";
 
 export type DebugDeps = {
   world: World;
@@ -18,6 +20,7 @@ export type DebugDeps = {
   gotoRoom: (id: string) => void;
   openReward: () => void;
   spawn: (typeId: string) => void;
+  spawnAt: (typeId: string, x: number, y: number) => void;
   drop: (weaponId: string, affixId: string) => void;
 };
 
@@ -73,6 +76,7 @@ export function installDebugHooks(deps: DebugDeps): void {
         race: pe === undefined ? null : (w.get(pe, PlayerTag)?.race ?? null),
         pos: pos ? [Math.round(pos.x), Math.round(pos.y)] : null,
         doors: room.doors,
+        walls: [...room.walls, ...room.interiorWalls].map((r) => [Math.round(r.x), Math.round(r.y), Math.round(r.w), Math.round(r.h)]),
         clearedEvents: counters.clearedEvents,
         bossId: deps.floor()?.bossId ?? null,
         roomTypes: deps.floor()?.nodes.map((n) => `${n.id}:${n.type}`) ?? [],
@@ -119,6 +123,24 @@ export function installDebugHooks(deps: DebugDeps): void {
     },
     spawn: (typeId: string) => {
       deps.spawn(typeId);
+    },
+    nav: (x: number, y: number) => {
+      const nav = w.tryResource<NavGrid>(NAV);
+      if (!nav) return null;
+      const cx = cellXOf(nav, x);
+      const cy = cellYOf(nav, y);
+      const idx = cy * nav.cols + cx;
+      return {
+        cell: [cx, cy],
+        blocked: nav.blocked[idx],
+        dist: nav.dist[idx],
+        dir: flowDir(nav, x, y),
+        start: nav.startCell,
+        room: nav.roomId,
+      };
+    },
+    spawnAt: (typeId: string, x: number, y: number) => {
+      deps.spawnAt(typeId, x, y);
     },
     reward: () => {
       deps.openReward();

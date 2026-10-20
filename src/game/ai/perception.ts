@@ -35,9 +35,11 @@ export type Threat = {
   uy: number;
   /** 是否有视线 */
   los: boolean;
+  /** 实际接近方向：无视线时由流场解析，带绕障 */
+  dir: { x: number; y: number };
 };
 
-export const NO_THREAT: Threat = { target: null, dx: 0, dy: 0, dist: Infinity, ux: 0, uy: 0, los: false };
+export const NO_THREAT: Threat = { target: null, dx: 0, dy: 0, dist: Infinity, ux: 0, uy: 0, los: false, dir: { x: 0, y: 0 } };
 
 export function sense(
   world: World,
@@ -59,5 +61,6 @@ export function sense(
     ux: dx / dist,
     uy: dy / dist,
     los: hasLineOfSight(walls, self.x, self.y, tp.x, tp.y),
+    dir: { x: dx / dist, y: dy / dist },
   };
 }

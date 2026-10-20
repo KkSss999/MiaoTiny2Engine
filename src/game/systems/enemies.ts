@@ -7,6 +7,8 @@ import { sense } from "../ai/perception.ts";
 import { getEnemy } from "../content.ts";
 import { speedMul } from "../status.ts";
 import { runCtx } from "../query.ts";
+import { flowDir, type NavGrid } from "../nav.ts";
+import { NAV } from "../resources.ts";
 import { ROOM_H, ROOM_W } from "../rooms.ts";
 
 const clamp = (v: number, a: number, b: number) => (v < a ? a : v > b ? b : v);
@@ -37,6 +39,18 @@ export function enemiesSystem(w: World, dt: number): void {
 
     // 感知一次，行为只消费结果
     const threat = sense(w, pos, pe, room.walls);
+
+    // 看不见玩家时用流场解决绕障
+    if (!threat.los) {
+      const nav = w.tryResource<NavGrid>(NAV);
+      const flow = nav ? flowDir(nav, pos.x, pos.y) : null;
+      if (flow) {
+        const bx = flow.x * 0.8 + threat.dir.x * 0.2;
+        const by = flow.y * 0.8 + threat.dir.y * 0.2;
+        const len = Math.hypot(bx, by) || 1;
+        threat.dir = { x: bx / len, y: by / len };
+      }
+    }
     const slow = speedMul(w, e);
 
     const ctx: EnemyCtx = {

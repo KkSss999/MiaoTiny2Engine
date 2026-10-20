@@ -8,13 +8,13 @@ const norm = (x: number, y: number): Vec => {
 };
 
 /** 朝目标 */
-export const seek = (t: Threat): Vec => ({ x: t.ux, y: t.uy });
+export const seek = (t: Threat): Vec => ({ x: t.dir.x, y: t.dir.y });
 
 /** 远离目标 */
-export const flee = (t: Threat): Vec => ({ x: -t.ux, y: -t.uy });
+export const flee = (t: Threat): Vec => ({ x: -t.dir.x, y: -t.dir.y });
 
 /** 绕圈：与目标连线垂直 */
-export const strafe = (t: Threat, sign = 1): Vec => norm(-t.uy * sign, t.ux * sign);
+export const strafe = (t: Threat, sign = 1): Vec => norm(-t.dir.y * sign, t.dir.x * sign);
 
 /**
  * 保持距离：太近退、太远进、合适就绕。
@@ -29,5 +29,5 @@ export function keepDistance(t: Threat, desired: number, sign = 1): Vec {
 
 /** 斜向接近：保留一点侧移，避免一条直线撞上来 */
 export function approachAtAngle(t: Threat, bias = 0.35): Vec {
-  return norm(t.ux - t.uy * bias, t.uy + t.ux * bias);
+  return norm(t.dir.x - t.dir.y * bias, t.dir.y + t.dir.x * bias);
 }

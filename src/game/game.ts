@@ -30,6 +30,7 @@ import { WorldManager } from "./world/WorldManager.ts";
 import { spawnBullet, spawnDrop, spawnEnemy, spawnPlayer, spawnTotem } from "./entities/factory.ts";
 import { weaponsSystem } from "./systems/weapons.ts";
 import { totemsSystem } from "./systems/totems.ts";
+import { navSystem } from "./systems/nav.ts";
 import { rollDrop } from "./systems/weapons.ts";
 import { installAffixes } from "./affixes.ts";
 import { implantSystem, installImplants } from "./implants.ts";
@@ -106,6 +107,10 @@ export class Game {
       gotoRoom: (id) => {
         const floor = this.manager?.floor;
         if (floor?.nodes.some((n) => n.id === id)) this.manager?.enter(id, null);
+      },
+      spawnAt: (typeId: string, x: number, y: number) => {
+        const scope = this.manager?.roomScope;
+        if (scope) spawnEnemy(this.world, scope, typeId, x, y);
       },
       spawn: (typeId: string) => {
         const scope = this.manager?.roomScope;
@@ -188,6 +193,7 @@ export class Game {
       .add("skills", (world, ctx) => skillsSystem(world, ctx.dt), { phase: 5 })
       .add("weapons", (world, ctx) => weaponsSystem(world, ctx.dt), { phase: 8 })
       .add("projectiles", (world, ctx) => projectilesSystem(world, ctx.dt), { phase: 10 })
+      .add("nav", (world) => navSystem(world), { phase: 11 })
       .add("enemies", (world, ctx) => enemiesSystem(world, ctx.dt), { phase: 20 })
       .add("implants", (world, ctx) => implantSystem(world, ctx.dt), { phase: 20 })
       .add("status", (world, ctx) => statusSystem(world, ctx.dt), { phase: 22 })
