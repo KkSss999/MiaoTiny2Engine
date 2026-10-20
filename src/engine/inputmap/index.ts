@@ -8,10 +8,14 @@ import type { InputState } from "#core/kernel/index.ts";
 export type ActionMap = Record<string, string[]>;
 
 export class InputActions {
-  constructor(
-    private readonly input: InputState,
-    private map: ActionMap = {},
-  ) {}
+  private readonly input: InputState;
+  private map: ActionMap;
+
+  // 不用参数属性：node 的 strip-only 模式不支持，测试里会直接加载失败
+  constructor(input: InputState, map: ActionMap = {}) {
+    this.input = input;
+    this.map = map;
+  }
 
   setMap(map: ActionMap): void {
     this.map = map;

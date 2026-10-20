@@ -17,6 +17,8 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "allowImportingTsExtensions": true,
+    // 只允许可擦除语法：node 的 strip-only 模式要能直接跑测试
+    "erasableSyntaxOnly": true,
     "baseUrl": ".",
     "paths": {
       "#core/*": [
