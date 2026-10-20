@@ -15,7 +15,13 @@ import { Tweens } from "./tweens.ts";
 import { RoomView } from "./roomView.ts";
 import { shakeOffset } from "./camera.ts";
 
-type SpriteRefValue = { spriteId: string; layer: keyof LayerMap; rotation: "none" | "aim" | "velocity"; scale: number };
+type SpriteRefValue = {
+  spriteId: string;
+  layer: keyof LayerMap;
+  rotation: "none" | "aim" | "velocity";
+  scale: number;
+  tint?: number | null;
+};
 
 /**
  * 表现层总入口。
@@ -140,6 +146,7 @@ export class Renderer {
 
       const tweenScale = this.tweens.get(e);
       view.scale.set(tweenScale ?? r.scale);
+      if (r.tint !== null && r.tint !== undefined) view.tint = r.tint;
       if (SORTED_LAYERS.includes(r.layer)) view.zIndex = Math.round(y);
     });
 

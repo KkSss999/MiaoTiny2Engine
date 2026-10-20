@@ -59,6 +59,10 @@ export const BulletTag = defineComponent("BulletTag", () => ({
   friendly: true,
   life: 1.6,
   speed: 900,
+  affix: "",
+  pierce: 0,
+  aoeRadius: 0,
+  aoeDamage: 0,
 }));
 
 export const PropTag = defineComponent("PropTag", () => ({
@@ -74,6 +78,8 @@ export const SpriteRef = defineComponent("SpriteRef", () => ({
   scale: 1,
   /** 出现时是否播弹出动画（表现层读取） */
   popIn: false,
+  /** 覆盖颜色（null = 用资源原色） */
+  tint: null as number | null,
 }));
 /** 状态效果：燃烧 / 冰冻 / 诅咒…… 一个组件装全部实例 */
 export type StatusInstance = { id: string; time: number; tick: number; magnitude: number };
@@ -111,4 +117,43 @@ export const Skills = defineComponent(
   defineShape("Skills", {
     list: s.array(s.object({ id: s.string(), cd: s.number().min(0) })),
   }),
+);
+/** 携带的武器：最多两把，active 指向当前手里那把 */
+export type WeaponSlot = { weaponId: string; affixId: string };
+
+export const Loadout = defineComponent(
+  "Loadout",
+  () => ({ slots: [] as WeaponSlot[], active: 0, cd: 0 }),
+  defineShape("Loadout", {
+    slots: s.array(s.object({ weaponId: s.string(), affixId: s.string() })),
+    active: s.number().int().min(0),
+    cd: s.number().min(0),
+  }),
+);
+
+/** 地上的武器掉落 */
+export const Pickup = defineComponent(
+  "Pickup",
+  () => ({ weaponId: "", affixId: "" }),
+  defineShape("Pickup", { weaponId: s.string(), affixId: s.string() }),
+);
+
+/** 魂火灯一类的放置物 */
+export const Totem = defineComponent(
+  "Totem",
+  () => ({ radius: 120, damage: 6, interval: 0.5, tick: 0, time: 6 }),
+  defineShape("Totem", {
+    radius: s.number().min(0),
+    damage: s.number().min(0),
+    interval: s.number().min(0.05),
+    tick: s.number(),
+    time: s.number(),
+  }),
+);
+
+/** 被击退：速度衰减 */
+export const Knock = defineComponent(
+  "Knock",
+  () => ({ x: 0, y: 0, time: 0 }),
+  defineShape("Knock", { x: s.number(), y: s.number(), time: s.number().min(0) }),
 );

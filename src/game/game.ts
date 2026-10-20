@@ -27,7 +27,11 @@ import { statusSystem } from "./systems/status.ts";
 import { installDamageRules } from "./damage.ts";
 import { RoomCleared, RoomEntered } from "./events.ts";
 import { WorldManager } from "./world/WorldManager.ts";
-import { spawnBullet, spawnEnemy, spawnPlayer } from "./entities/factory.ts";
+import { spawnBullet, spawnDrop, spawnEnemy, spawnPlayer, spawnTotem } from "./entities/factory.ts";
+import { weaponsSystem } from "./systems/weapons.ts";
+import { totemsSystem } from "./systems/totems.ts";
+import { rollDrop } from "./systems/weapons.ts";
+import { installAffixes } from "./affixes.ts";
 import { installDebugHooks } from "./debug.ts";
 import { Loop } from "@core/time/Loop.ts";
 
@@ -100,6 +104,13 @@ export class Game {
         const floor = this.manager?.floor;
         if (floor?.nodes.some((n) => n.id === id)) this.manager?.enter(id, null);
       },
+      drop: (weaponId, affixId) => {
+        const scope = this.manager?.roomScope;
+        const player = playerEntity(this.world);
+        if (!scope || player === undefined) return;
+        const pos = this.world.get(player, Position);
+        if (pos) spawnDrop(this.world, scope, pos.x + 40, pos.y, { weaponId, affixId });
+      },
     });
     api.bind(this);
 
@@ -130,6 +141,13 @@ export class Game {
       this.clearedEvents++;
       this.renderer.renderRoomWalls(roomCtx(w).walls);
       this.say(event.type === "boss" ? "傀儡核心停止运转" : "区域清空 —— 门已开启", 1.6);
+
+      // 掉落：精英/Boss 必掉，普通战斗房 45%
+      const chance = event.type === "elite" || event.type === "boss" ? 1 : 0.45;
+      const scope = this.manager?.roomScope;
+      if (scope && Math.random() < chance) {
+        spawnDrop(w, scope, ROOM_W / 2 + (Math.random() - 0.5) * 240, ROOM_H / 2 + (Math.random() - 0.5) * 240, rollDrop());
+      }
     });
 
     // 房间数据就绪 → HUD 与提示（表现层自己重绘场景）
@@ -144,13 +162,16 @@ export class Game {
     });
 
     installDamageRules(w);
+    installAffixes(w);
 
     this.schedule
       .add("playerControl", (world, ctx) => playerControlSystem(world, ctx.dt), { phase: 0 })
       .add("skills", (world, ctx) => skillsSystem(world, ctx.dt), { phase: 5 })
+      .add("weapons", (world, ctx) => weaponsSystem(world, ctx.dt), { phase: 8 })
       .add("projectiles", (world, ctx) => projectilesSystem(world, ctx.dt), { phase: 10 })
       .add("enemies", (world, ctx) => enemiesSystem(world, ctx.dt), { phase: 20 })
-      .add("status", (world, ctx) => statusSystem(world, ctx.dt), { phase: 25 })
+      .add("status", (world, ctx) => statusSystem(world, ctx.dt), { phase: 22 })
+      .add("totems", (world, ctx) => totemsSystem(world, ctx.dt), { phase: 24 })
       .add("roomFlow", (world) => roomFlowSystem(world), { phase: 30 })
       .add("hudSync", (world) => hudSyncSystem(world, () => this.manager?.visited ?? 0), { phase: 40 });
   }
@@ -274,6 +295,10 @@ export class Game {
         if (scope) spawnBullet(w, scope, eff);
       } else if (eff.type === "enemy") {
         if (scope) spawnEnemy(w, scope, eff.kind, eff.x, eff.y);
+      } else if (eff.type === "burst") {
+        this.renderer.emitParticles(eff.x, eff.y, eff.count, eff.color, eff.speed ?? 180);
+      } else if (eff.type === "totem") {
+        if (scope) spawnTotem(w, scope, eff.x, eff.y, eff.radius, eff.damage, eff.time, eff.color);
       } else if (eff.type === "shake") {
         run.trauma = clamp(run.trauma + eff.amount, 0, 1);
       } else if (eff.type === "hitstop") {

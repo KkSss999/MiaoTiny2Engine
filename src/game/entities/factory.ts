@@ -1,6 +1,8 @@
 import type { Entity, EntityScope, World } from "@core/ecs/index.ts";
 import { createMachine } from "@core/fsm/index.ts";
 import type { Race } from "../api.ts";
+import type { WeaponSlot } from "../components.ts";
+import { allAffixes, getWeapon } from "../content.ts";
 import type { Effect } from "../effects.ts";
 import type { EnemyKind } from "../rooms.ts";
 import { ROOM_H } from "../rooms.ts";
@@ -8,7 +10,7 @@ import { ENEMY_AI } from "../ai/enemyAi.ts";
 import { STARTING_SKILLS } from "../skills.ts";
 import { PLAYER_FSM } from "../ai/playerAi.ts";
 import {
-  Aim, Brain, BulletTag, Circle, EnemyTag, Health, Level, PlayerTag, Position, PropTag, Skills, SpriteRef, Statuses, Velocity,
+  Aim, Brain, BulletTag, Circle, EnemyTag, Health, Level, Loadout, Pickup, PlayerTag, Position, PropTag, Skills, SpriteRef, Statuses, Totem, Velocity,
 } from "../components.ts";
 
 type BulletEffect = Extract<Effect, { type: "bullet" }>;
@@ -33,6 +35,13 @@ export function spawnPlayer(world: World, race: Race): Entity {
   world.add(e, Statuses);
   world.add(e, Level, { level: 1, xp: 0, next: 20 });
   world.add(e, Skills, { list: STARTING_SKILLS[race].map((id) => ({ id, cd: 0 })) });
+  const affixes = allAffixes();
+  const startAffix = affixes[Math.floor(Math.random() * affixes.length)]?.id ?? "burn";
+  world.add(e, Loadout, {
+    slots: [{ weaponId: race === "human" ? "nailgun" : "scythe", affixId: startAffix }],
+    active: 0,
+    cd: 0,
+  });
   world.add(e, SpriteRef, {
     spriteId: race === "human" ? "player.human" : "player.undead",
     layer: "actor",
@@ -73,13 +82,23 @@ export function spawnBullet(world: World, scope: EntityScope, effect: BulletEffe
   world.add(e, Position, { x: effect.x, y: effect.y });
   world.add(e, Velocity, { x: Math.cos(effect.angle) * effect.speed, y: Math.sin(effect.angle) * effect.speed });
   world.add(e, Circle, { r: effect.r });
-  world.add(e, BulletTag, { dmg: effect.dmg, friendly: effect.friendly, life: 1.6, speed: effect.speed });
+  world.add(e, BulletTag, {
+    dmg: effect.dmg,
+    friendly: effect.friendly,
+    life: 1.6,
+    speed: effect.speed,
+    affix: effect.affix ?? "",
+    pierce: effect.pierce ?? 0,
+    aoeRadius: effect.aoe?.radius ?? 0,
+    aoeDamage: effect.aoe?.damage ?? 0,
+  });
   world.add(e, SpriteRef, {
     spriteId: effect.friendly ? "bullet.friendly" : "bullet.hostile",
     layer: "actor",
     rotation: "velocity",
     scale: 1,
     popIn: false,
+    tint: effect.color,
   });
   return e;
 }
@@ -96,6 +115,46 @@ export function spawnProp(world: World, scope: EntityScope, kind: "barrel" | "cr
     rotation: "none",
     scale: 1,
     popIn: false,
+  });
+  return e;
+}
+/** 地上的武器掉落 */
+export function spawnDrop(world: World, scope: EntityScope, x: number, y: number, slot: WeaponSlot): Entity {
+  const e = scope.spawn(Position);
+  world.add(e, Position, { x, y });
+  world.add(e, Pickup, { weaponId: slot.weaponId, affixId: slot.affixId });
+  world.add(e, SpriteRef, {
+    spriteId: "pickup.weapon",
+    layer: "prop",
+    rotation: "none",
+    scale: 1,
+    popIn: true,
+    tint: getWeapon(slot.weaponId)?.color ?? 0xffffff,
+  });
+  return e;
+}
+
+/** 魂火灯一类的放置物 */
+export function spawnTotem(
+  world: World,
+  scope: EntityScope,
+  x: number,
+  y: number,
+  radius: number,
+  damage: number,
+  time: number,
+  color: number,
+): Entity {
+  const e = scope.spawn(Position);
+  world.add(e, Position, { x, y });
+  world.add(e, Totem, { radius, damage, interval: 0.5, tick: 0, time });
+  world.add(e, SpriteRef, {
+    spriteId: "fx.totem",
+    layer: "fx",
+    rotation: "none",
+    scale: 1,
+    popIn: true,
+    tint: color,
   });
   return e;
 }

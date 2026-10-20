@@ -1,7 +1,7 @@
 import type { World } from "@core/ecs/index.ts";
 import { fire, is, step } from "@core/fsm/index.ts";
 import { Aim, Brain, EnemyTag, PlayerTag, Position } from "../components.ts";
-import { clamp, effects, moveWithWalls, playerEntity, roomCtx, runCtx } from "../combat.ts";
+import { clamp, moveWithWalls, playerEntity, roomCtx, runCtx } from "../combat.ts";
 import { input } from "../input.ts";
 import { DEBUG, VIEW, type DebugCtx, type ViewCtx } from "../resources.ts";
 import { ROOM_H, ROOM_W } from "../rooms.ts";
@@ -23,7 +23,6 @@ export function playerControlSystem(w: World, dt: number): void {
   const run = runCtx(w);
 
   pt.invuln = Math.max(0, pt.invuln - dt);
-  pt.fireCd = Math.max(0, pt.fireCd - dt);
   pt.dashCd = Math.max(0, pt.dashCd - dt);
   pt.heat = clamp(pt.heat - dt * 18, 0, 100);
   if (pt.overheated && pt.heat < 40) pt.overheated = false;
@@ -92,19 +91,4 @@ export function playerControlSystem(w: World, dt: number): void {
   pos.x = clamp(pos.x, -80, ROOM_W + 80);
   pos.y = clamp(pos.y, -80, ROOM_H + 80);
 
-  if (input.down && pt.fireCd <= 0) {
-    pt.fireCd = 0.15;
-    effects(w).push({
-      type: "bullet",
-      x: pos.x + Math.cos(angle) * 26,
-      y: pos.y + Math.sin(angle) * 26,
-      angle: angle + (Math.random() - 0.5) * 0.08,
-      speed: 900,
-      dmg: 12,
-      friendly: true,
-      color: pt.race === "human" ? 0xffd166 : 0x39e0c8,
-      r: 4,
-    });
-    run.trauma = clamp(run.trauma + 0.05, 0, 1);
-  }
 }

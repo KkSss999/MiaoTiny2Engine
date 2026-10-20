@@ -54,6 +54,11 @@ for (let i = 0; i < 60; i++) {
 }
 if (auto) await evalJs("window.__dbg.auto(true)");
 if (process.argv.includes("--god")) await evalJs("window.__dbg.god()");
+const give = process.argv.find((a) => a.startsWith("--give="))?.split("=")[1];
+if (give) {
+  const [weaponId, affixId] = give.split(",");
+  await evalJs(`window.__dbg.give('${weaponId}', '${affixId}')`);
+}
 const statusId = process.argv.find((a) => a.startsWith("--status="))?.split("=")[1];
 if (process.argv.includes("--boss")) {
   await evalJs("window.__dbg.gotoRoom(window.__dbg.state().bossId)");
@@ -73,6 +78,11 @@ for (const arg of process.argv.filter((a) => a.startsWith("--key="))) {
   const code = arg.slice("--key=".length);
   await evalJs(`window.dispatchEvent(new KeyboardEvent('keydown', { code: '${code}', bubbles: true }))`);
   await sleep(400);
+}
+const thenScript = process.argv.find((a) => a.startsWith("--then="))?.slice("--then=".length);
+if (thenScript) {
+  await evalJs(thenScript);
+  await sleep(700);
 }
 const probe = process.argv.find((a) => a.startsWith("--probe="))?.slice("--probe=".length);
 if (probe) console.log("probe:", (await evalJs(probe))?.result?.value);

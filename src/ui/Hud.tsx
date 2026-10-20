@@ -51,6 +51,11 @@ export function Hud() {
         </div>
       </div>
 
+      <div className="absolute bottom-5 left-1/2 flex -translate-x-1/2 gap-2 font-mono">
+        <WeaponBox name={s.weapon1} affix={s.affix1} active={s.activeSlot === 0} order={1} />
+        <WeaponBox name={s.weapon2} affix={s.affix2} active={s.activeSlot === 1} order={2} />
+      </div>
+
       <div className="absolute right-4 top-3 text-right text-[11px] text-bone/30">
         <div>击杀 {s.kills}</div>
         <div className="text-bone/20">seed {s.seed}</div>
@@ -59,6 +64,30 @@ export function Hud() {
 
       {s.mode === "paused" && <PauseOverlay />}
       {(s.over || s.won) && <EndOverlay won={s.won} kills={s.kills} seed={s.seed} />}
+    </div>
+  );
+}
+
+function WeaponBox({ name, affix, active, order }: { name: string; affix: string; active: boolean; order: number }) {
+  if (!name) {
+    return (
+      <div className="flex h-[46px] w-[132px] items-center justify-center border border-dashed border-bone/10 text-[10px] tracking-[0.2em] text-bone/15">
+        空 槽
+      </div>
+    );
+  }
+  return (
+    <div
+      className={[
+        "w-[132px] border px-3 py-2 transition",
+        active ? "border-brass/60 bg-brass/[0.08]" : "border-bone/12 bg-white/[0.02] opacity-60",
+      ].join(" ")}
+    >
+      <div className="flex items-center justify-between text-[9px] tracking-[0.2em] text-bone/25">
+        <span>{order}</span>
+        <span className="text-brass/60">{affix}</span>
+      </div>
+      <div className="mt-0.5 text-[12px] tracking-[0.15em] text-bone/85">{name}</div>
     </div>
   );
 }

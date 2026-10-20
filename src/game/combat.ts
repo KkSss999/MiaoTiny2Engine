@@ -40,7 +40,7 @@ export const shake = (w: World, amount: number) => {
 };
 
 /** 对敌人造成伤害：负责表现（闪白/震屏/顿帧），数值走统一管线 */
-export function damageEnemy(w: World, target: Entity, amount: number, source: Entity | null = null): void {
+export function damageEnemy(w: World, target: Entity, amount: number, source: Entity | null = null, tags: string[] = []): void {
   const hp = w.get(target, Health);
   if (!hp || hp.hp <= 0) return;
   const tag = w.get(target, EnemyTag);
@@ -48,7 +48,7 @@ export function damageEnemy(w: World, target: Entity, amount: number, source: En
   shake(w, 0.04);
   const run = runCtx(w);
   run.freeze = Math.max(run.freeze, 0.022);
-  dealDamage(w, { source, target, amount, kind: "bullet", tags: [] });
+  dealDamage(w, { source, target, amount, kind: "bullet", tags });
 }
 
 /** 对玩家造成伤害：无敌帧、受击反馈在这里，数值同样走管线 */

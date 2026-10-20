@@ -7,6 +7,7 @@ import { input } from "./input.ts";
 import { hud } from "./store.ts";
 import { applyStatus } from "./status.ts";
 import { grantXp } from "./damage.ts";
+import { equip } from "./systems/weapons.ts";
 
 export type DebugDeps = {
   world: World;
@@ -15,6 +16,7 @@ export type DebugDeps = {
   views: () => number;
   counters: () => { clearedEvents: number; transitions: number };
   gotoRoom: (id: string) => void;
+  drop: (weaponId: string, affixId: string) => void;
 };
 
 /**
@@ -43,6 +45,9 @@ export function installDebugHooks(deps: DebugDeps): void {
       const counters = deps.counters();
       return {
         mode: hud.get().mode,
+        weapons: [hud.get().weapon1, hud.get().weapon2],
+        affixes: [hud.get().affix1, hud.get().affix2],
+        activeSlot: hud.get().activeSlot,
         hp: Math.round(hp),
         room: room.node?.id ?? null,
         roomType: room.node?.type ?? null,
@@ -101,6 +106,13 @@ export function installDebugHooks(deps: DebugDeps): void {
     status: (id: string) => {
       const target = w.query(EnemyTag, Health).collect().find((e) => (w.get(e, Health)?.hp ?? 0) > 0);
       if (target !== undefined) applyStatus(w, target, id);
+    },
+    drop: (weaponId: string, affixId: string) => {
+      deps.drop(weaponId, affixId);
+    },
+    give: (weaponId: string, affixId: string) => {
+      const pe = playerEntity(w);
+      if (pe !== undefined) equip(w, pe, weaponId, affixId);
     },
     xp: (n: number) => {
       const pe = playerEntity(w);

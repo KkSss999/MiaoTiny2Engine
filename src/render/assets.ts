@@ -10,6 +10,8 @@ export type SpriteId =
   | "prop.crystal"
   | "bullet.friendly"
   | "bullet.hostile"
+  | "pickup.weapon"
+  | "fx.totem"
   | "debug.box";
 
 export type SpriteAsset = {
@@ -79,6 +81,18 @@ export const SPRITES: Record<SpriteId, SpriteAsset> = {
     key: "bullet.hostile",
     draw: (g) => {
       g.rect(-5, -2.5, 10, 5).fill(0xd7263d);
+    },
+  },
+  "pickup.weapon": {
+    key: "pickup.weapon",
+    draw: (g) => {
+      g.poly([0, -14, 12, 0, 0, 14, -12, 0]).fill(0xffffff).stroke({ width: 2, color: 0x0a0e14 });
+    },
+  },
+  "fx.totem": {
+    key: "fx.totem",
+    draw: (g) => {
+      g.circle(0, 0, 22).fill({ color: 0xffffff, alpha: 0.25 }).stroke({ width: 3, color: 0xffffff });
     },
   },
   "debug.box": {

@@ -1,6 +1,6 @@
 import type { World } from "@core/ecs/index.ts";
 import { step } from "@core/fsm/index.ts";
-import { Brain, Circle, EnemyTag, Health, Position } from "../components.ts";
+import { Brain, Circle, EnemyTag, Health, Knock, Position } from "../components.ts";
 import { damagePlayer, effects, moveWithWalls, playerEntity, roomCtx } from "../combat.ts";
 import { ENEMY_AI, type EnemyCtx } from "../ai/enemyAi.ts";
 import { speedMul } from "../status.ts";
@@ -20,6 +20,15 @@ export function enemiesSystem(w: World, dt: number): void {
 
     tag.flash = Math.max(0, tag.flash - dt);
     tag.cd -= dt;
+
+    // 击退：先于 AI 位移，衰减
+    const knock = w.get(e, Knock);
+    if (knock && knock.time > 0) {
+      knock.time -= dt;
+      moveWithWalls(room.walls, pos, circle.r, knock.x * dt, knock.y * dt);
+      knock.x *= 0.88;
+      knock.y *= 0.88;
+    }
 
     const dx = ppos.x - pos.x;
     const dy = ppos.y - pos.y;

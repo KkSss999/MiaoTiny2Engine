@@ -17,6 +17,11 @@ export type HudState = {
   level: number;
   xp: number;
   xpNext: number;
+  weapon1: string;
+  affix1: string;
+  weapon2: string;
+  affix2: string;
+  activeSlot: number;
   skillName: string;
   skillCd: number;
   skillCdMax: number;
@@ -42,6 +47,11 @@ let state: HudState = {
   level: 1,
   xp: 0,
   xpNext: 20,
+  weapon1: "",
+  affix1: "",
+  weapon2: "",
+  affix2: "",
+  activeSlot: 0,
   skillName: "",
   skillCd: 0,
   skillCdMax: 1,

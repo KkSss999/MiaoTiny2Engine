@@ -14,6 +14,7 @@ export function projectilesSystem(w: World, dt: number): void {
     tag.life -= dt;
 
     if (tag.life <= 0 || hitsWall(room.walls, pos.x, pos.y, circle.r)) {
+      if (tag.aoeDamage > 0) explode(w, pos.x, pos.y, tag.aoeRadius, tag.aoeDamage);
       w.commands.despawn(e);
       return;
     }
@@ -25,7 +26,13 @@ export function projectilesSystem(w: World, dt: number): void {
         const tp = w.require(target, Position);
         const tc = w.require(target, Circle);
         if (Math.hypot(tp.x - pos.x, tp.y - pos.y) < tc.r + circle.r) {
-          damageEnemy(w, target, tag.dmg, playerEntity(w) ?? null);
+          const tags = tag.affix ? [tag.affix] : [];
+          damageEnemy(w, target, tag.dmg, playerEntity(w) ?? null, tags);
+          if (tag.pierce > 0) {
+            tag.pierce -= 1;
+            return;
+          }
+          if (tag.aoeDamage > 0) explode(w, pos.x, pos.y, tag.aoeRadius, tag.aoeDamage);
           w.commands.despawn(e);
           return;
         }
