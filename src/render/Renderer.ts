@@ -169,8 +169,9 @@ export class Renderer {
 
   render(alpha: number, camX: number, camY: number, trauma: number, dt: number): void {
     const shake = shakeOffset(trauma);
-    this.root.x = -camX + shake.x;
-    this.root.y = -camY + shake.y;
+    // 像素风：摄像机取整，避免整屏亚像素抖动（实体本身的插值保留）
+    this.root.x = Math.round(-camX + shake.x);
+    this.root.y = Math.round(-camY + shake.y);
 
     const k = alpha < 0 ? 0 : alpha > 1 ? 1 : alpha;
 

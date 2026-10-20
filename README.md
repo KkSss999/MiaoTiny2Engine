@@ -95,6 +95,7 @@ src/game/              游戏层
   gen/                  地图/房间模板生成（纯 TS）
 
 src/render/            表现层（唯一 import pixi 的地方）
+  assets.ts             程序化图形启动时烘成纹理（像素风：nearest 采样）——接美术只改这张表
   Renderer.ts           统筹：插值、旋转、闪烁、消息、粒子
   viewRegistry.ts       实体 ↔ 显示对象绑定（靠 onAdd/onRemove 钩子）
   assets.ts             资源表 + 程序化占位（接美术后换成图集帧）

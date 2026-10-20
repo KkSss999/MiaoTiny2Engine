@@ -9,6 +9,7 @@ import { ROOM_H, ROOM_W } from "./rooms.ts";
 import type { RoomNode } from "./gen/floor.ts";
 import { PlayerTag, Position } from "./components.ts";
 import { Renderer } from "../render/Renderer.ts";
+import { prepareAssets } from "../render/assets.ts";
 import { installFx } from "../render/fx.ts";
 import { EffectQueue } from "./effects.ts";
 import {
@@ -85,6 +86,8 @@ export class Game {
       return;
     }
     host.appendChild(this.app.canvas);
+    // 纹理烘焙必须在任何实体创建之前
+    prepareAssets(this.app.renderer);
     this.renderer = new Renderer(this.app, this.world);
     this.renderer.init();
     installFx(this.world, this.renderer);

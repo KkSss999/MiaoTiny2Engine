@@ -1,4 +1,4 @@
-import { Container, Graphics } from "pixi.js";
+import { Container, Graphics, Sprite, Texture, type Renderer } from "pixi.js";
 
 export type SpriteId =
   | "player.human"
@@ -151,19 +151,76 @@ export const SPRITES: Record<SpriteId, SpriteAsset> = {
   },
 };
 
-const cache = new Map<SpriteId, Graphics>();
+const textures = new Map<string, Texture>();
+/** 图形是围绕自己的原点画的，烘成纹理后要把这个原点补回来 */
+const anchors = new Map<string, { x: number; y: number }>();
+let prepared = false;
 
-/** 占位资源：每个 key 一个模板，实体拿到的是自己的 Graphics 实例 */
+/**
+ * 把程序化图形烘成纹理（启动跑一次）。
+ *
+ * 之前每个实体都是自己的 Graphics —— 每个都是独立 draw call，
+ * 而且各自持有一份矢量几何。烘成纹理后同一资源的 Sprite 会被批处理，
+ * 40 个敌人从 40 次 draw call 降到个位数。
+ *
+ * 像素风：纹理按 1:1 生成，采样用 nearest，缩放时不糊。
+ */
+export function prepareAssets(renderer: Renderer): void {
+  if (prepared) return;
+  prepared = true;
+
+  for (const asset of Object.values(SPRITES)) {
+    if (textures.has(asset.key)) continue;
+
+    const g = new Graphics();
+    if (asset.draw) asset.draw(g);
+    else g.rect(-12, -12, 24, 24).fill(0xff00ff);
+
+    const bounds = g.getLocalBounds();
+    const texture = renderer.generateTexture({
+      target: g,
+      resolution: 1,
+      antialias: false,
+      textureSourceOptions: { scaleMode: "nearest", autoGenerateMipmaps: false },
+    });
+    g.destroy();
+
+    // 纹理的左上角对应原 bounds.x/y，算出 0,0 在纹理里的相对位置当作 anchor
+    anchors.set(asset.key, {
+      x: bounds.width > 0 ? -bounds.x / bounds.width : 0.5,
+      y: bounds.height > 0 ? -bounds.y / bounds.height : 0.5,
+    });
+    textures.set(asset.key, texture);
+  }
+}
+
+export function getTexture(id: string): Texture | null {
+  return textures.get(id) ?? null;
+}
+
+export function assetReady(): boolean {
+  return prepared;
+}
+
+const MISSING = "debug.box" as SpriteId;
+
+/**
+ * 实体视图。有纹理就返回 Sprite（可批处理），
+ * 还没烘焙时退回 Graphics 占位——正常启动顺序下不会走到。
+ */
 export function createSpriteView(id: string): Container {
-  const asset = SPRITES[id as SpriteId];
-  const g = new Graphics();
-  if (!asset || !asset.draw) {
+  const texture = textures.get(id) ?? textures.get(MISSING);
+  if (!texture) {
+    const g = new Graphics();
     g.rect(-12, -12, 24, 24).fill(0xff00ff);
     return g;
   }
-  asset.draw(g);
-  if (!cache.has(asset.key)) cache.set(asset.key, g);
-  return g;
+
+  const sprite = new Sprite(texture);
+  const anchor = anchors.get(id) ?? anchors.get(MISSING);
+  if (anchor) sprite.anchor.set(anchor.x, anchor.y);
+  sprite.roundPixels = true;
+  return sprite;
 }
 
 export function hasSprite(id: string): boolean {
