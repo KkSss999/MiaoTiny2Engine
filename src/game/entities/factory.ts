@@ -2,7 +2,7 @@ import type { Entity, EntityScope, World } from "#core/ecs/index.ts";
 import { createMachine } from "#core/agent/index.ts";
 import type { Race } from "../api.ts";
 import type { WeaponSlot } from "../components.ts";
-import { allAffixes, getEnemy, getWeapon } from "../content.ts";
+import { allAffixes, getClip, getEnemy, getWeapon } from "../content.ts";
 import { AFFIX_COLORS } from "../affixes.ts";
 import type { Effect } from "../effects.ts";
 import { ROOM_H } from "../rooms.ts";
@@ -11,7 +11,7 @@ import { STARTING_SKILLS } from "../skills.ts";
 import { STARTING_IMPLANTS, applyImplants } from "../implants.ts";
 import { PLAYER_FSM } from "../ai/playerAi.ts";
 import {
-  Aim, Brain, BulletTag, Circle, EliteTag, EnemyTag, Health, Level, Loadout, Pickup, PlayerTag, Position, PropTag, Skills, SpriteRef, Statuses, Totem, Velocity,
+  Aim, Anim, Brain, BulletTag, Circle, EliteTag, EnemyTag, Health, Level, Loadout, Pickup, PlayerTag, Position, PropTag, Skills, SpriteRef, Statuses, Totem, Velocity,
 } from "../components.ts";
 
 type BulletEffect = Extract<Effect, { type: "bullet" }>;
@@ -76,6 +76,11 @@ export function spawnEnemy(
   if (eliteAffix) world.add(e, EliteTag, { affixId: eliteAffix });
   world.add(e, EnemyTag, { typeId: def.id, speed: def.speed, cd: rnd(0.4, 1.4), flash: 0 });
   world.add(e, Statuses);
+
+  // 有对应动画片段就挂上（数据驱动，没有就保持静态贴图）
+  const clipId = `enemy.${def.id}.idle`;
+  if (getClip(clipId)) world.add(e, Anim, { clip: clipId, time: Math.random() * 2, frame: 0 });
+
   const machine = ENEMY_BEHAVIORS[def.behavior] ?? ENEMY_BEHAVIORS.chaser;
   world.add(e, Brain, createMachine(machine));
   world.add(e, SpriteRef, {

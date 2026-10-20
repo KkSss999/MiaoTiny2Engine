@@ -33,11 +33,13 @@ import { spawnBullet, spawnDrop, spawnEnemy, spawnPlayer, spawnTotem } from "./e
 import { weaponsSystem } from "./systems/weapons.ts";
 import { totemsSystem } from "./systems/totems.ts";
 import { navSystem } from "./systems/nav.ts";
+import { animationSystem } from "./systems/animation.ts";
 import { rollDrop } from "./systems/weapons.ts";
 import { installAffixes } from "./affixes.ts";
 import { implantSystem, installImplants } from "./implants.ts";
 import { applyReward, buildRewards, rewardAffix, type RewardOption } from "./rewards.ts";
 import { installDebugHooks } from "./debug.ts";
+import { connectDevChannel } from "./devChannel.ts";
 import { Loop } from "#core/kernel/index.ts";
 
 const STEP_MS = 1000 / 60;
@@ -51,6 +53,7 @@ export class Game {
   private app!: Application;
   private renderer!: Renderer;
   private detach?: () => void;
+  private detachDev?: () => void;
 
   private world = new World();
   private schedule = new Schedule();
@@ -94,6 +97,8 @@ export class Game {
     installFx(this.world, this.renderer);
 
     this.setupWorld();
+    // 开发期：接编辑器热更新（生产构建里是空函数）
+    this.detachDev = connectDevChannel();
     this.detach = attachInput(this.app.canvas);
     this.onEscape = (event: KeyboardEvent) => {
       if (event.code !== "Escape") return;
@@ -202,6 +207,7 @@ export class Game {
       .add("implants", (world, ctx) => implantSystem(world, ctx.dt), { phase: 20 })
       .add("status", (world, ctx) => statusSystem(world, ctx.dt), { phase: 22 })
       .add("totems", (world, ctx) => totemsSystem(world, ctx.dt), { phase: 24 })
+      .add("animation", (world, ctx) => animationSystem(world, ctx.dt), { phase: 26 })
       .add("roomFlow", (world) => roomFlowSystem(world), { phase: 30 })
       .add("hudSync", (world) => hudSyncSystem(world, () => this.manager?.visited ?? 0), { phase: 40 });
   }
@@ -272,6 +278,7 @@ export class Game {
     api.unbind(this);
     if (this.onEscape) window.removeEventListener("keydown", this.onEscape);
     this.detach?.();
+    this.detachDev?.();
     if (!this.app) return;
     this.app.ticker.remove(this.onTick);
     this.life.dispose();

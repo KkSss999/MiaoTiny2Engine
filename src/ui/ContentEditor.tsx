@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { SpriteGallery } from "./SpriteGallery";
 
 type TableInfo = { key: string; fields: string[]; rows: number };
@@ -23,6 +23,12 @@ export function ContentEditor() {
   const [draft, setDraft] = useState<Row>({});
   const [status, setStatus] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const channel = useRef<BroadcastChannel | null>(null);
+
+  useEffect(() => {
+    channel.current = new BroadcastChannel("cbb-dev");
+    return () => channel.current?.close();
+  }, []);
 
   const load = useCallback(async () => {
     const [info, content] = await Promise.all([
@@ -65,8 +71,45 @@ export function ContentEditor() {
       setStatus({ kind: "err", text: body.error ?? "保存失败" });
       return;
     }
-    setStatus({ kind: "ok", text: "已保存，页面会自动重载" });
+    setStatus({ kind: "ok", text: "已保存，已推送到运行中的游戏" });
+    channel.current?.postMessage({ type: "content", table, row: body.row });
     await load();
+  };
+
+  const createRow = async () => {
+    const template = rows[0];
+    if (!template) return;
+    const id = `${table}-${Date.now().toString(36).slice(-4)}`;
+    const row = { ...template, id, name: `${String(template.name ?? id)}·新` };
+
+    const res = await fetch(`/__dev/content/${table}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ row }),
+    });
+    const body = await res.json();
+    if (!res.ok) {
+      setStatus({ kind: "err", text: body.error ?? "新建失败" });
+      return;
+    }
+    await load();
+    setSelected(id);
+    setDraft({ ...row });
+    setStatus({ kind: "ok", text: "已新建" });
+  };
+
+  const deleteRow = async () => {
+    if (!row) return;
+    const res = await fetch(`/__dev/content/${table}/${encodeURIComponent(row.id as string)}`, { method: "DELETE" });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setStatus({ kind: "err", text: body.error ?? "删除失败" });
+      return;
+    }
+    setSelected(null);
+    setDraft({});
+    await load();
+    setStatus({ kind: "ok", text: "已删除" });
   };
 
   const revert = () => {
@@ -103,6 +146,12 @@ export function ContentEditor() {
 
       {/* 行 */}
       <div className="w-48 shrink-0 overflow-auto border-r border-bone/10 p-2">
+        <button
+          onClick={createRow}
+          className="mb-2 w-full border border-bone/10 px-2 py-1 text-[10px] tracking-[0.2em] text-bone/40 hover:border-bone/30 hover:text-bone/70"
+        >
+          + 新建
+        </button>
         {rows.map((r) => (
           <button
             key={String(r.id)}
@@ -179,6 +228,9 @@ export function ContentEditor() {
               </button>
               <button onClick={revert} className="border border-bone/10 px-3 py-1.5 text-[11px] text-bone/50">
                 还原
+              </button>
+              <button onClick={deleteRow} className="border border-blood/30 px-3 py-1.5 text-[11px] text-blood/70">
+                删除
               </button>
               {status && (
                 <span className={status.kind === "ok" ? "text-[11px] text-soul/80" : "text-[11px] text-blood"}>

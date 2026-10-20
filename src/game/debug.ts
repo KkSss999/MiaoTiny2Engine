@@ -10,7 +10,7 @@ import { hud } from "./store.ts";
 import { applyStatus } from "./status.ts";
 import { grantXp } from "./damage.ts";
 import { equip, rollDrop } from "./systems/weapons.ts";
-import { AffixTable, EnemyTable, StatusTable, WeaponTable } from "./content.ts";
+import { AffixTable, EnemyTable, StatusTable, WeaponTable, applyContentPatch } from "./content.ts";
 import { spawnDrop } from "./entities/factory.ts";
 
 export type DebugDeps = {
@@ -122,6 +122,24 @@ export function installDebugHooks(deps: DebugDeps): void {
     .register("entities", (filter?: string[]) => listEntities(w, filter ?? []), "列出实体，可传组件名过滤")
     .register("inspect", (entity: number) => inspectEntity(w, entity), "查看某个实体的全部组件")
     .register("counts", () => countComponents(w), "各组件挂了多少实例")
+    .register(
+      "patch",
+      (table: string, row: Record<string, unknown>) => applyContentPatch(table, row),
+      "直接应用一条内容改动（绕过广播，用于排查）",
+    )
+    .register(
+      "row",
+      (table: string, id: string) => {
+        const tables: Record<string, { get: (k: string) => unknown }> = {
+          weapons: WeaponTable,
+          enemies: EnemyTable,
+          affixes: AffixTable,
+          statuses: StatusTable,
+        };
+        return tables[table]?.get(id) ?? null;
+      },
+      "读一行内容（表名, 主键）",
+    )
     .register(
       "content",
       () => ({

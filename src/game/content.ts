@@ -1,14 +1,15 @@
 import { Database } from "#core/db/index.ts";
 import { TEMPLATES, type RoomTemplate } from "./gen/templateData.ts";
-import { AffixTable, EnemyTable, RoomTemplates, StatusTable, WeaponTable } from "./contentSchema.ts";
+import { AffixTable, AnimationTable, EnemyTable, RoomTemplates, StatusTable, WeaponTable } from "./contentSchema.ts";
 
 import weaponsJson from "../../content/weapons.json" with { type: "json" };
 import enemiesJson from "../../content/enemies.json" with { type: "json" };
 import affixesJson from "../../content/affixes.json" with { type: "json" };
 import statusesJson from "../../content/statuses.json" with { type: "json" };
+import animationsJson from "../../content/animations.json" with { type: "json" };
 
 // 表定义从这里转发，老的 `from "./content.ts"` 引用不用改
-export { AffixTable, EnemyTable, RoomTemplates, StatusTable, WeaponTable };
+export { AffixTable, AnimationTable, EnemyTable, RoomTemplates, StatusTable, WeaponTable };
 
 /** 内容数据：改 JSON 即可，不用改代码 */
 export const CONTENT = {
@@ -16,6 +17,7 @@ export const CONTENT = {
   enemies: enemiesJson,
   affixes: affixesJson,
   statuses: statusesJson,
+  animations: animationsJson,
 };
 
 export const contentDb = new Database();
@@ -24,6 +26,7 @@ contentDb.register(StatusTable);
 contentDb.register(WeaponTable);
 contentDb.register(AffixTable);
 contentDb.register(EnemyTable);
+contentDb.register(AnimationTable);
 
 let loaded = false;
 
@@ -36,11 +39,42 @@ export function loadContent(): number {
   n += contentDb.seed("statuses", CONTENT.statuses);
   n += contentDb.seed("weapons", CONTENT.weapons);
   n += contentDb.seed("affixes", CONTENT.affixes);
+  n += contentDb.seed("animations", CONTENT.animations);
   return n;
 }
 
 // 模块加载即入库：内容表是只读数据，早点失败比运行时炸好
 loadContent();
+
+/**
+ * 开发期热更新：把编辑器改动直接应用到运行中的内容表。
+ * 只接受已注册的表，走 schema 校验（update 内部会 parse）。
+ */
+export function applyContentPatch(table: string, row: Record<string, unknown>): boolean {
+  const known: Record<string, { update: (key: string, patch: unknown) => unknown; has: (key: string) => boolean }> = {
+    weapons: WeaponTable as never,
+    enemies: EnemyTable as never,
+    affixes: AffixTable as never,
+    statuses: StatusTable as never,
+  };
+  const def = known[table];
+  if (!def) return false;
+  const id = String(row.id ?? "");
+  if (!id || !def.has(id)) return false;
+  def.update(id, row);
+  return true;
+}
+
+export type AnimationClip = {
+  id: string;
+  sheet: string;
+  frames: number[];
+  fps: number;
+  loop: boolean;
+};
+
+export const getClip = (id: string): AnimationClip | undefined => AnimationTable.get(id) as AnimationClip | undefined;
+export const allClips = (): AnimationClip[] => AnimationTable.list() as AnimationClip[];
 
 export function getTemplate(id: string): RoomTemplate {
   const row = RoomTemplates.get(id);

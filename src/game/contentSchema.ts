@@ -94,3 +94,11 @@ export const EnemyTable = defineTable("enemies", {
   /** 包夹半径（0 = 不参与包夹） */
   flankRadius: s.number().min(0).default(0),
 });
+/** 动画片段：引用某张网格图集的一段帧序列 */
+export const AnimationTable = defineTable("animations", {
+  id: s.string().min(1).key(),
+  sheet: s.string(),
+  frames: s.array(s.number().int().min(0)),
+  fps: s.number().min(0.1).default(8),
+  loop: s.boolean().default(true),
+});

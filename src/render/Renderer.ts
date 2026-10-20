@@ -27,6 +27,10 @@ import { shakeOffset, uiScale } from "./camera.ts";
 import { Nameplates } from "./nameplates.ts";
 import { BossBar } from "./bossBar.ts";
 import { DamageNumbers } from "./damageNumbers.ts";
+import { getSheetFrame, prepareSheets } from "./sheets.ts";
+import { Anim } from "../game/components.ts";
+import { getClip } from "../game/content.ts";
+import type { Sprite } from "pixi.js";
 import { PlayerWeapon } from "./playerWeapon.ts";
 import { WeaponFired } from "../game/events.ts";
 import { DamageLanded } from "../game/damage.ts";
@@ -83,6 +87,7 @@ export class Renderer {
     this.layers.floor.addChild(this.room.floorRoot);
     this.layers.shadow.addChild(this.room.wallRoot);
     this.layers.fx.addChild(this.particles.view);
+    prepareSheets(this.app.renderer);
     this.app.stage.addChild(this.msg);
     this.bossBar.attach(this.app.stage);
     this.views.bind();
@@ -192,6 +197,18 @@ export class Renderer {
       } else if (r.rotation === "velocity") {
         const vel = this.world.get(e, Velocity);
         if (vel) view.rotation = Math.atan2(vel.y, vel.x);
+      }
+
+      // 帧动画：按 clip 的当前帧换子纹理（同一张图集的帧仍可批处理）
+      const anim = this.world.get(e, Anim);
+      if (anim) {
+        const clip = getClip(anim.clip);
+        if (clip) {
+          const index = clip.frames[anim.frame] ?? 0;
+          const texture = getSheetFrame(clip.sheet, index);
+          const sprite = view as Sprite;
+          if (texture && sprite.texture !== texture) sprite.texture = texture;
+        }
       }
 
       const tweenScale = this.tweens.get(e);

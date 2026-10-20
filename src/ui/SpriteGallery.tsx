@@ -1,6 +1,8 @@
 import { useEffect, useRef } from "react";
-import { Application, Container, Graphics, Text } from "pixi.js";
+import { AnimatedSprite, Application, Container, Graphics, Text, type Texture } from "pixi.js";
 import { SPRITES, type SpriteId } from "../render/assets.ts";
+import { getSheetFrame, prepareSheets } from "../render/sheets.ts";
+import { allClips } from "../game/content.ts";
 
 /**
  * 资源画廊：把 assets.ts 里每个程序化图形画出来看一眼。
@@ -21,7 +23,7 @@ export function SpriteGallery() {
       .init({
         background: 0x0a0e14,
         resizeTo: el,
-        height: 260,
+        height: 420,
         antialias: false,
         resolution: Math.min(window.devicePixelRatio || 1, 2),
         autoDensity: true,
@@ -58,6 +60,42 @@ export function SpriteGallery() {
 
           const label = new Text({
             text: id,
+            style: { fontFamily: "ui-monospace, monospace", fontSize: 9, fill: 0x8a8478 },
+          });
+          label.anchor.set(0.5, 0);
+          label.position.set(x, y + 34);
+          app.stage.addChild(label);
+        });
+
+        // ---- 动画片段：网格切图 + 帧序列实时播放
+        prepareSheets(app.renderer);
+
+        const clips = allClips();
+        const animTop = Math.ceil(ids.length / cols) * cellH + 40;
+
+        const animTitle = new Text({
+          text: "ANIMATIONS",
+          style: { fontFamily: "ui-monospace, monospace", fontSize: 10, fill: 0x8a6d3b, letterSpacing: 3 },
+        });
+        animTitle.position.set(12, animTop - 20);
+        app.stage.addChild(animTitle);
+
+        clips.forEach((clip, i) => {
+          const frames = clip.frames
+            .map((f) => getSheetFrame(clip.sheet, f))
+            .filter((t): t is Texture => t !== null);
+          if (frames.length === 0) return;
+
+          const x = 110 + i * 150;
+          const y = animTop + 30;
+
+          const anim = new AnimatedSprite({ textures: frames, animationSpeed: clip.fps / 60, loop: clip.loop, autoPlay: true });
+          anim.anchor.set(0.5);
+          anim.position.set(x, y);
+          app.stage.addChild(anim);
+
+          const label = new Text({
+            text: `${clip.id} · ${clip.fps}fps`,
             style: { fontFamily: "ui-monospace, monospace", fontSize: 9, fill: 0x8a8478 },
           });
           label.anchor.set(0.5, 0);

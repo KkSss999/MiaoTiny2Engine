@@ -183,3 +183,13 @@ export const EliteTag = defineComponent(
   () => ({ affixId: "" }),
   defineShape("EliteTag", { affixId: s.string() }),
 );
+/** 帧动画播放状态：只存时间与帧号，帧数据在 content/animations.json */
+export const Anim = defineComponent(
+  "Anim",
+  () => ({ clip: "", time: 0, frame: 0 }),
+  defineShape("Anim", {
+    clip: s.string(),
+    time: s.number().min(0),
+    frame: s.number().int().min(0),
+  }),
+);

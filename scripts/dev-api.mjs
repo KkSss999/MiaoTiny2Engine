@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const CONTENT_DIR = path.join(ROOT, "content");
-const TABLES = ["weapons", "enemies", "affixes", "statuses"];
+const TABLES = ["weapons", "enemies", "affixes", "statuses", "animations"];
 
 const fileOf = (table) => path.join(CONTENT_DIR, `${table}.json`);
 
@@ -19,8 +19,14 @@ function writeTable(table, rows) {
 }
 
 async function schemas() {
-  const { AffixTable, EnemyTable, StatusTable, WeaponTable } = await import("../src/game/contentSchema.ts");
-  return { weapons: WeaponTable, enemies: EnemyTable, affixes: AffixTable, statuses: StatusTable };
+  const { AffixTable, AnimationTable, EnemyTable, StatusTable, WeaponTable } = await import("../src/game/contentSchema.ts");
+  return {
+    weapons: WeaponTable,
+    enemies: EnemyTable,
+    affixes: AffixTable,
+    statuses: StatusTable,
+    animations: AnimationTable,
+  };
 }
 
 /**
@@ -92,6 +98,38 @@ export function devApi() {
 
           if (req.method === "GET" && parts[0] === "tables") {
             return send(res, 200, { tables: await describeTables() });
+          }
+
+          if (req.method === "POST" && parts[0] === "content" && parts.length === 2) {
+            const table = parts[1];
+            if (!TABLES.includes(table)) return send(res, 404, { error: `未知表：${table}` });
+
+            const body = await readBody(req);
+            const rows = readTable(table);
+            const row = body.row ?? {};
+            if (!row.id) return send(res, 400, { error: "新行必须有 id" });
+            if (rows.some((r) => r.id === row.id)) return send(res, 409, { error: `id 已存在：${row.id}` });
+
+            try {
+              await validateRow(table, row);
+            } catch (err) {
+              return send(res, 400, { error: err?.message ?? "校验失败" });
+            }
+
+            rows.push(row);
+            writeTable(table, rows);
+            return send(res, 200, { ok: true, row });
+          }
+
+          if (req.method === "DELETE" && parts[0] === "content" && parts.length >= 3) {
+            const table = parts[1];
+            const id = decodeURIComponent(parts.slice(2).join("/"));
+            if (!TABLES.includes(table)) return send(res, 404, { error: `未知表：${table}` });
+            const rows = readTable(table);
+            const next = rows.filter((r) => r.id !== id);
+            if (next.length === rows.length) return send(res, 404, { error: `找不到行：${id}` });
+            writeTable(table, next);
+            return send(res, 200, { ok: true });
           }
 
           if (req.method === "PUT" && parts[0] === "content" && parts.length >= 3) {
