@@ -12,6 +12,10 @@ export type SpriteId =
   | "prop.crystal"
   | "bullet.friendly"
   | "bullet.hostile"
+  | "weapon.gun"
+  | "weapon.melee"
+  | "weapon.spell"
+  | "weapon.totem"
   | "pickup.weapon"
   | "fx.totem"
   | "debug.box";
@@ -32,14 +36,14 @@ export const SPRITES: Record<SpriteId, SpriteAsset> = {
     key: "player.human",
     draw: (g) => {
       g.circle(0, 0, 16).fill(0xb4552d).stroke({ width: 3, color: 0xffd166 });
-      g.rect(0, -4, 26, 8).fill(0xffd166);
+      g.circle(0, 0, 6).fill(0xffd166);
     },
   },
   "player.undead": {
     key: "player.undead",
     draw: (g) => {
       g.circle(0, 0, 16).fill(0xe8e2d0).stroke({ width: 3, color: 0x39e0c8 });
-      g.rect(0, -4, 26, 8).fill(0x39e0c8);
+      g.circle(0, 0, 6).fill(0x39e0c8);
     },
   },
   "enemy.melee": {
@@ -97,6 +101,34 @@ export const SPRITES: Record<SpriteId, SpriteAsset> = {
     key: "bullet.hostile",
     draw: (g) => {
       g.rect(-5, -2.5, 10, 5).fill(0xd7263d);
+    },
+  },
+  "weapon.gun": {
+    key: "weapon.gun",
+    draw: (g) => {
+      g.rect(0, -3.5, 24, 7).fill(0xffffff).stroke({ width: 1.5, color: 0x11161c });
+      g.rect(22, -2, 6, 4).fill(0xffffff);
+    },
+  },
+  "weapon.melee": {
+    key: "weapon.melee",
+    draw: (g) => {
+      g.rect(0, -2.5, 14, 5).fill(0x8a7a5c);
+      g.poly([10, 3, 40, -26, 52, -26, 16, 9]).fill(0xffffff).stroke({ width: 2, color: 0x11161c });
+    },
+  },
+  "weapon.spell": {
+    key: "weapon.spell",
+    draw: (g) => {
+      g.rect(0, -2, 26, 4).fill(0x8a7a5c);
+      g.circle(30, 0, 7).fill(0xffffff).stroke({ width: 1.5, color: 0x11161c });
+    },
+  },
+  "weapon.totem": {
+    key: "weapon.totem",
+    draw: (g) => {
+      g.rect(0, -2, 16, 4).fill(0x8a7a5c);
+      g.circle(22, 0, 8).fill(0xffffff).stroke({ width: 2, color: 0x11161c });
     },
   },
   "pickup.weapon": {

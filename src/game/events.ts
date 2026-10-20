@@ -10,3 +10,10 @@ export const EntityKilled = defineEvent<{ entity: Entity; byPlayer: boolean }>("
 export const PlayerDamaged = defineEvent<{ amount: number; hp: number }>("game:PlayerDamaged");
 /** 换房完成：房间数据已就绪，表现层据此重绘场景 */
 export const RoomEntered = defineEvent<{ roomId: string; type: RoomType; visited: number; total: number }>("game:RoomEntered");
+/** 玩家开火：表现层用来播后坐/挥砍动画 */
+export const WeaponFired = defineEvent<{
+  player: number;
+  weaponId: string;
+  behavior: string;
+  angle: number;
+}>("game:WeaponFired");

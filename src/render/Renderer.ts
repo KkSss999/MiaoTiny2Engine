@@ -27,6 +27,8 @@ import { shakeOffset } from "./camera.ts";
 import { Nameplates } from "./nameplates.ts";
 import { BossBar } from "./bossBar.ts";
 import { DamageNumbers } from "./damageNumbers.ts";
+import { PlayerWeapon } from "./playerWeapon.ts";
+import { WeaponFired } from "../game/events.ts";
 import { DamageLanded } from "../game/damage.ts";
 
 type SpriteRefValue = {
@@ -55,6 +57,7 @@ export class Renderer {
   private plates: Nameplates;
   private bossBar: BossBar;
   private damage: DamageNumbers;
+  private weapon: PlayerWeapon;
   private prev = new Map<Entity, { x: number; y: number }>();
 
   constructor(app: Application, world: World) {
@@ -64,6 +67,7 @@ export class Renderer {
     this.views = new ViewRegistry(world, this.layers);
     this.plates = new Nameplates(this.layers.overlay);
     this.damage = new DamageNumbers(this.layers.overlay);
+    this.weapon = new PlayerWeapon(this.layers);
     this.bossBar = new BossBar();
     this.msg = new Text({
       text: "",
@@ -94,6 +98,8 @@ export class Renderer {
       this.room.renderFloor();
       this.room.renderWalls(room.walls);
     });
+
+    this.world.bus.on(WeaponFired, (event) => this.weapon.pulse(event.behavior));
 
     // 伤害飘字：只读事件，不改任何数据
     this.world.bus.on(DamageLanded, ({ packet, applied }) => {
@@ -217,6 +223,7 @@ export class Renderer {
       const prev = this.prev.get(e) ?? fallback;
       return { x: prev.x + (fallback.x - prev.x) * k, y: prev.y + (fallback.y - prev.y) * k };
     };
+    this.weapon.sync(this.world, dt);
     this.plates.sync(this.world, posOf);
     this.bossBar.sync(this.world, this.app.screen.width, this.app.screen.height, dt);
 

@@ -5,6 +5,7 @@ import { input } from "../input.ts";
 import { effects } from "../combat.ts";
 import { playerEntity, runCtx } from "../query.ts";
 import { fireWeapon } from "../weapons.ts";
+import { WeaponFired } from "../events.ts";
 
 export function currentSlot(world: World, player: Entity): WeaponSlot | undefined {
   const lo = world.get(player, Loadout);
@@ -46,8 +47,16 @@ export function weaponsSystem(world: World, dt: number): void {
   const run = runCtx(world);
   if (run.over || run.won) return;
 
-  // 切枪
-  if (input.consume("KeyQ") && lo.slots.length > 1) {
+  // 切枪：Q 轮换，1/2 直接选槽
+  const pick1 = input.consume("Digit1");
+  const pick2 = input.consume("Digit2");
+  if (pick1 && lo.slots.length > 0 && lo.active !== 0) {
+    lo.active = 0;
+    lo.cd = Math.max(lo.cd, 0.2);
+  } else if (pick2 && lo.slots.length > 1 && lo.active !== 1) {
+    lo.active = 1;
+    lo.cd = Math.max(lo.cd, 0.2);
+  } else if (input.consume("KeyQ") && lo.slots.length > 1) {
     lo.active = (lo.active + 1) % lo.slots.length;
     lo.cd = Math.max(lo.cd, 0.2);
   }
@@ -64,6 +73,12 @@ export function weaponsSystem(world: World, dt: number): void {
       angle: aim.angle,
       weapon,
       affixId: slot.affixId,
+    });
+    world.bus.emit(WeaponFired, {
+      player,
+      weaponId: weapon.id,
+      behavior: weapon.behavior,
+      angle: aim.angle,
     });
   }
 
