@@ -80,6 +80,7 @@ export function installDebugHooks(deps: DebugDeps): void {
         shots: run.shots,
         auto: w.resource<DebugCtx>(DEBUG).autoAim,
         down: input.down,
+        keys: [...input.keys],
         race: pe === undefined ? null : (w.get(pe, PlayerTag)?.race ?? null),
         pos: pos ? [Math.round(pos.x), Math.round(pos.y)] : null,
         doors: room.doors,

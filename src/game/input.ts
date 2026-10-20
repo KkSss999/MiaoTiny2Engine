@@ -39,14 +39,37 @@ export function attachInput(canvas: HTMLCanvasElement) {
   const pu = (e: PointerEvent) => {
     if (e.button === 0) input.down = false;
   };
-  const blur = () => {
+  const reset = () => {
     input.keys.clear();
+    input.pressed.clear();
+    input.down = false;
+  };
+
+  // 失焦 / 切走 / 手势取消：全部松开，否则会卡键
+  const blur = () => reset();
+  const visibility = () => {
+    if (document.hidden) reset();
+  };
+
+  // 右键会弹出浏览器菜单，期间的 pointerup / keyup 全部丢失，
+  // 结果就是"一直开火"或"一直往前走"。直接把菜单禁掉。
+  const contextMenu = (e: MouseEvent) => {
+    const target = e.target as HTMLElement | null;
+    if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) return;
+    e.preventDefault();
+    input.down = false;
+  };
+
+  const pointerCancel = () => {
     input.down = false;
   };
 
   window.addEventListener("keydown", kd);
   window.addEventListener("keyup", ku);
   window.addEventListener("blur", blur);
+  window.addEventListener("contextmenu", contextMenu);
+  window.addEventListener("pointercancel", pointerCancel);
+  document.addEventListener("visibilitychange", visibility);
   canvas.addEventListener("pointermove", pm);
   canvas.addEventListener("pointerdown", pd);
   window.addEventListener("pointerup", pu);
@@ -55,6 +78,9 @@ export function attachInput(canvas: HTMLCanvasElement) {
     window.removeEventListener("keydown", kd);
     window.removeEventListener("keyup", ku);
     window.removeEventListener("blur", blur);
+    window.removeEventListener("contextmenu", contextMenu);
+    window.removeEventListener("pointercancel", pointerCancel);
+    document.removeEventListener("visibilitychange", visibility);
     canvas.removeEventListener("pointermove", pm);
     canvas.removeEventListener("pointerdown", pd);
     window.removeEventListener("pointerup", pu);
