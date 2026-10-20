@@ -1,5 +1,5 @@
 import { ROOM_H, ROOM_W } from "../game/rooms.ts";
-import { makeRng } from "#core/rng/index.ts";
+import { makeRng } from "#core/kernel/index.ts";
 
 const clamp = (v: number, a: number, b: number) => (v < a ? a : v > b ? b : v);
 const rng = makeRng(0x5eed1234);

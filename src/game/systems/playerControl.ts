@@ -1,5 +1,5 @@
 import type { World } from "#core/ecs/index.ts";
-import { fire, is, step } from "#core/fsm/index.ts";
+import { fire, is, step } from "#core/agent/index.ts";
 import { Aim, Brain, EnemyTag, PlayerTag, Position } from "../components.ts";
 import { clamp, moveWithWalls, playerEntity, roomCtx, runCtx } from "../combat.ts";
 import { input } from "../input.ts";

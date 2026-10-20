@@ -1,6 +1,6 @@
 import type { World } from "#core/ecs/index.ts";
 import { DebugRegistry, countComponents, inspectEntity, listEntities } from "#core/ecs/index.ts";
-import { cellXOf, cellYOf, flowDir, type NavGrid } from "#core/nav/index.ts";
+import { cellXOf, cellYOf, flowDir, type NavGrid } from "#core/agent/index.ts";
 import type { Floor, RoomNode } from "./gen/floor.ts";
 import { Brain, BulletTag, EliteTag, EnemyTag, Health, Level, PlayerTag, Position, SpriteRef } from "./components.ts";
 import { DEBUG, NAV, type DebugCtx } from "./resources.ts";

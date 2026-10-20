@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { s, Database, Table, defineTable, MemoryStorage, ValidationError, Store, StoreChanged, defineSchema, getSchema, schemaNames, type Change } from "../index.ts";
-import { EventBus } from "../../event/index.ts";
+import { EventBus } from "#core/kernel/index.ts";
 
 // ---------------------------------------------------------------- schema
 

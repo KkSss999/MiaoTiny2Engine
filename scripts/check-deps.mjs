@@ -8,14 +8,10 @@ const CORE = fileURLToPath(new URL("../src/core", import.meta.url));
 
 /** 允许的依赖：key 可以 import value 里的层 */
 const ALLOWED = {
-  event: [],
-  time: [],
-  nav: [],
-  rng: [],
-  input: [],
-  db: ["event"],
-  ecs: ["event", "db"],
-  fsm: ["event"],
+  kernel: [],
+  db: ["kernel"],
+  ecs: ["kernel", "db"],
+  agent: ["kernel"],
 };
 
 const LAYERS = Object.keys(ALLOWED);
@@ -74,4 +70,4 @@ if (violations.length > 0) {
   for (const v of violations) console.error("  ✗ " + v);
   process.exit(1);
 }
-console.log("✓ 依赖方向正确：event/time/nav/rng/input ← db ← ecs，event ← fsm");
+console.log("✓ 依赖方向正确：kernel ← db ← ecs，kernel ← agent");

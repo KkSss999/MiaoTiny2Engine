@@ -1,4 +1,4 @@
-import { defineEvent, type EventBus } from "../event/index.ts";
+import { defineEvent, type EventBus } from "#core/kernel/index.ts";
 import { ValidationError, type ObjectValue, type Shape } from "./schema.ts";
 import type { SchemaDef } from "./schemaDef.ts";
 

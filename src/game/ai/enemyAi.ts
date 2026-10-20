@@ -1,4 +1,4 @@
-import type { MachineDef } from "#core/fsm/index.ts";
+import type { MachineDef } from "#core/agent/index.ts";
 import type { EnemyDef } from "../content.ts";
 import type { Threat } from "./perception.ts";
 import { contact, firePattern, summonAdds } from "./attacks.ts";

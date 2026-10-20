@@ -32,20 +32,19 @@ pnpm test:all                # core 单测 + 游戏层单测（寻路/伤害/奖
 ## 层次（依赖单向，只被消费）
 
 ```
-src/core/event   Lifetime 所有权树 + 事件总线 + 订阅作用域        （入度 0）
-src/core/time    Loop 固定步长时钟（纯逻辑）                     （入度 0）
+src/core/kernel  事件总线/生命周期、固定步长时钟、输入状态、种子随机   （入度 0）
      ↑
-src/core/db      schema/shape + Store(CRUD) + DataChanged       （只消费 event）
+src/core/db      schema/shape + Store(CRUD) + DataChanged            （只消费 kernel）
      ↑
 src/core/ecs     组件形状来自 db；变更发 DataChanged；生命周期用 Lifetime
-src/core/fsm     状态转移广播到 event 总线
+src/core/agent   状态机（决策）+ 流场寻路（移动）                     （只消费 kernel）
 ```
 
 这条约束由 `pnpm check:core` 守住 —— 脚本扫 import 图，反向依赖直接失败：
 
 ```
-core 依赖图： db → event ×2  ecs → db ×7  ecs → event ×4  fsm → event ×3
-✓ 依赖方向正确
+core 依赖图： agent → kernel ×3  db → kernel ×2  ecs → db ×7  ecs → kernel ×4
+✓ 依赖方向正确：kernel ← db ← ecs，kernel ← agent
 ```
 
 **一条变更通道**：DB 的行变更和 ECS 的实体/组件变更都是同一种 `Change`，都走 `DataChanged`：
@@ -60,14 +59,20 @@ core 依赖图： db → event ×2  ecs → db ×7  ecs → event ×4  fsm → e
 
 ```
 src/core/              底层：只被消费，不认识游戏
-  event/               Lifetime 所有权树、事件总线、订阅作用域
-  time/                Loop：固定步长 / 插值 alpha / 追帧上限
+  kernel/
+    event/             总线、令牌、Lifetime 所有权树
+    time/              Loop：固定步长 / 插值 alpha / 追帧上限
+    input/             InputState：按住 / 单次触发 / 失焦复位（不含 DOM）
+    rng/               mulberry32 种子随机
   db/                  schema 与 shape 定义、Store(CRUD 总线)、版本化快照
-  ecs/                 实体句柄、archetype 存储、查询缓存、调度、EntityScope
-  fsm/                 有序转移 / minTime / interrupt / 栈式打断
+  ecs/                 实体句柄、archetype 存储、查询缓存、调度、EntityScope、调试反射
+  agent/
+    fsm/               有序转移 / minTime / interrupt / 栈式打断
+    nav/               流场寻路：格子化 + 广度优先 + 梯度方向
   */test/              各自的单测（node --test，不开浏览器）
 
-app 侧用 `@core/xxx/index.ts` 引用；core 内部一律相对路径，所以测试能直接跑。
+app 侧用 `#core/<包>/index.ts` 引用（package.json imports，node 也能解析）；
+core 内部同包用相对路径，跨包也用 `#core/...`。
 ```
 
 src/game/              游戏层
@@ -83,8 +88,6 @@ src/game/              游戏层
   entities/factory.ts   实体构造（玩家/敌人/子弹/道具）
   ai/                   行为状态机定义（敌人三套 + 玩家动作）
   systems/              playerControl → skills → projectiles → enemies → status → roomFlow → hudSync
-  core/Loop.ts          固定步长时钟（纯逻辑，喂 deltaMs 出 steps/alpha）
-  core/Loop.test.ts     步数 / 插值 / 追帧上限 / 夹取
   debug.ts              window.__dbg 调试钩子（与生产代码分离）
   content.ts            内容表：房间模板 seed 进 @gdd/db，启动即校验
   events.ts             游戏事件定义（RoomCleared / EntityKilled / PlayerDamaged）

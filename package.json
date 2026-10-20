@@ -8,8 +8,8 @@
   },
   "scripts": {
     "dev": "vite",
-    "test:core": "node --test src/core/event/test/*.test.ts src/core/db/test/*.test.ts src/core/ecs/test/*.test.ts src/core/fsm/test/*.test.ts src/core/nav/test/*.test.ts src/core/rng/test/*.test.ts src/core/input/test/*.test.ts src/core/time/*.test.ts",
-    "test:game": "node --test src/game/test/*.test.ts",
+    "test:core": "node --test 'src/core/**/*.test.ts'",
+    "test:game": "node --test 'src/game/**/*.test.ts'",
     "test:all": "pnpm check:core && pnpm test:core && pnpm test:game",
     "check:core": "node scripts/check-deps.mjs",
     "typecheck": "tsc --noEmit",

@@ -1,5 +1,5 @@
 import type { Entity, World } from "#core/ecs/index.ts";
-import { defineEvent } from "#core/event/index.ts";
+import { defineEvent } from "#core/kernel/index.ts";
 import { Brain, EnemyTag, Health, Implants, Level, PlayerTag } from "./components.ts";
 import { damageTakenMul } from "./status.ts";
 import { runCtx } from "./query.ts";

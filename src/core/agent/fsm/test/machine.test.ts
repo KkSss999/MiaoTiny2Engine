@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { EventBus } from "../../event/index.ts";
+import { EventBus } from "#core/kernel/index.ts";
 import { createMachine, fire, is, step, push, pop, reset, Transitioned, Pushed, Popped, type MachineDef } from "../index.ts";
 
 type Ctx = { hp: number; angry: boolean; log: string[] };

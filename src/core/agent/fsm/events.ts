@@ -1,4 +1,4 @@
-import { defineEvent } from "../event/index.ts";
+import { defineEvent } from "#core/kernel/index.ts";
 
 export type TransitionInfo = { machine: string; from: string; to: string };
 

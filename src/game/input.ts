@@ -1,4 +1,4 @@
-import { InputState } from "#core/input/index.ts";
+import { InputState } from "#core/kernel/index.ts";
 
 /**
  * 全局输入状态。键位含义由各系统自己解释（移动、开火、技能……），

@@ -1,7 +1,7 @@
 import { Application } from "pixi.js";
 import { Schedule, World } from "#core/ecs/index.ts";
-import { Lifetime } from "#core/event/index.ts";
-import { Transitioned } from "#core/fsm/index.ts";
+import { Lifetime } from "#core/kernel/index.ts";
+import { Transitioned } from "#core/agent/index.ts";
 import { attachInput, input } from "./input.ts";
 import { hud } from "./store.ts";
 import { api, type Race } from "./api.ts";
@@ -36,7 +36,7 @@ import { installAffixes } from "./affixes.ts";
 import { implantSystem, installImplants } from "./implants.ts";
 import { applyReward, buildRewards, rewardAffix, type RewardOption } from "./rewards.ts";
 import { installDebugHooks } from "./debug.ts";
-import { Loop } from "#core/time/Loop.ts";
+import { Loop } from "#core/kernel/index.ts";
 
 const STEP_MS = 1000 / 60;
 const clamp = (v: number, a: number, b: number) => (v < a ? a : v > b ? b : v);

@@ -1,4 +1,4 @@
-import type { Lifetime } from "../event/index.ts";
+import type { Lifetime } from "#core/kernel/index.ts";
 import { DataChanged } from "../db/index.ts";
 import { ENTITY_SCHEMA } from "./changes.ts";
 import type { ComponentType } from "./component.ts";
