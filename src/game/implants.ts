@@ -34,7 +34,7 @@ const burstAt = (world: World, x: number, y: number, color: number, count = 6): 
 export const IMPLANTS: Record<string, ImplantDef> = {
   "human.emfist": {
     id: "human.emfist",
-    name: "电磁拳",
+    name: "电弧护腕",
     race: "human",
     slot: "手臂",
     desc: "每 1.2 秒对贴身敌人放电",
@@ -128,14 +128,30 @@ export const IMPLANTS: Record<string, ImplantDef> = {
   },
 };
 
-export const DEFAULT_IMPLANTS: Record<Race, string[]> = {
-  human: ["human.emfist", "human.doubledash", "human.shield", "human.turret"],
-  undead: ["undead.revive", "undead.boneservant", "undead.sacrifice", "undead.curse"],
+/** 开局只带两个，其余靠局内奖励拿 */
+export const STARTING_IMPLANTS: Record<Race, string[]> = {
+  human: ["human.doubledash", "human.shield"],
+  undead: ["undead.revive", "undead.sacrifice"],
 };
+
+export function implantPool(race: Race): string[] {
+  return Object.keys(IMPLANTS).filter((id) => IMPLANTS[id].race === race);
+}
 
 export function hasImplant(world: World, player: Entity, id: string): boolean {
   const imp = world.get(player, Implants);
   return imp ? imp.ids.includes(id) : false;
+}
+
+export function addImplant(world: World, player: Entity, id: string): boolean {
+  if (!world.has(player, Implants)) world.add(player, Implants);
+  const imp = world.get(player, Implants);
+  const def = IMPLANTS[id];
+  if (!imp || !def || imp.ids.includes(id)) return false;
+  imp.ids.push(id);
+  imp.cds.push({ id, cd: def.cooldown ?? 0 });
+  def.setup?.(world, player);
+  return true;
 }
 
 export function applyImplants(world: World, player: Entity, ids: string[]): void {

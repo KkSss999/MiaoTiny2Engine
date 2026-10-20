@@ -16,6 +16,7 @@ export type DebugDeps = {
   views: () => number;
   counters: () => { clearedEvents: number; transitions: number };
   gotoRoom: (id: string) => void;
+  openReward: () => void;
   drop: (weaponId: string, affixId: string) => void;
 };
 
@@ -48,6 +49,7 @@ export function installDebugHooks(deps: DebugDeps): void {
         weapons: [hud.get().weapon1, hud.get().weapon2],
         affixes: [hud.get().affix1, hud.get().affix2],
         activeSlot: hud.get().activeSlot,
+        implants: hud.get().implants,
         hp: Math.round(hp),
         room: room.node?.id ?? null,
         roomType: room.node?.type ?? null,
@@ -71,6 +73,7 @@ export function installDebugHooks(deps: DebugDeps): void {
         doors: room.doors,
         clearedEvents: counters.clearedEvents,
         bossId: deps.floor()?.bossId ?? null,
+        roomTypes: deps.floor()?.nodes.map((n) => `${n.id}:${n.type}`) ?? [],
         views: deps.views(),
         transitions: counters.transitions,
         sprites: w
@@ -111,6 +114,9 @@ export function installDebugHooks(deps: DebugDeps): void {
     },
     drop: (weaponId: string, affixId: string) => {
       deps.drop(weaponId, affixId);
+    },
+    reward: () => {
+      deps.openReward();
     },
     give: (weaponId: string, affixId: string) => {
       const pe = playerEntity(w);

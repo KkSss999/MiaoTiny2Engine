@@ -1,4 +1,4 @@
-export type GameMode = "menu" | "playing" | "paused";
+export type GameMode = "menu" | "playing" | "paused" | "reward";
 
 export type HudState = {
   mode: GameMode;
@@ -31,6 +31,7 @@ export type HudState = {
   over: boolean;
   won: boolean;
   message: string;
+  rewards: { kind: string; name: string; desc: string; affix: string }[];
 };
 
 let state: HudState = {
@@ -64,6 +65,7 @@ let state: HudState = {
   over: false,
   won: false,
   message: "",
+  rewards: [],
 };
 
 const subs = new Set<() => void>();

@@ -8,7 +8,7 @@ import type { EnemyKind } from "../rooms.ts";
 import { ROOM_H } from "../rooms.ts";
 import { ENEMY_AI } from "../ai/enemyAi.ts";
 import { STARTING_SKILLS } from "../skills.ts";
-import { DEFAULT_IMPLANTS, applyImplants } from "../implants.ts";
+import { STARTING_IMPLANTS, applyImplants } from "../implants.ts";
 import { PLAYER_FSM } from "../ai/playerAi.ts";
 import {
   Aim, Brain, BulletTag, Circle, EnemyTag, Health, Level, Loadout, Pickup, PlayerTag, Position, PropTag, Skills, SpriteRef, Statuses, Totem, Velocity,
@@ -34,7 +34,7 @@ export function spawnPlayer(world: World, race: Race): Entity {
   });
   world.add(e, Brain, createMachine(PLAYER_FSM));
   world.add(e, Statuses);
-  applyImplants(world, e, DEFAULT_IMPLANTS[race]);
+  applyImplants(world, e, STARTING_IMPLANTS[race]);
   world.add(e, Level, { level: 1, xp: 0, next: 20 });
   world.add(e, Skills, { list: STARTING_SKILLS[race].map((id) => ({ id, cd: 0 })) });
   const affixes = allAffixes();

@@ -33,6 +33,7 @@ import { totemsSystem } from "./systems/totems.ts";
 import { rollDrop } from "./systems/weapons.ts";
 import { installAffixes } from "./affixes.ts";
 import { implantSystem, installImplants } from "./implants.ts";
+import { applyReward, buildRewards, rewardAffix, type RewardOption } from "./rewards.ts";
 import { installDebugHooks } from "./debug.ts";
 import { Loop } from "@core/time/Loop.ts";
 
@@ -62,6 +63,7 @@ export class Game {
   private runLife: Lifetime = this.life.fork().activate();
   /** 世界协调器：不留资源，只借用 run 的生命周期 */
   private manager: WorldManager | null = null;
+  private rewards: RewardOption[] = [];
 
   private detached = false;
   private disposed = false;
@@ -105,6 +107,9 @@ export class Game {
         const floor = this.manager?.floor;
         if (floor?.nodes.some((n) => n.id === id)) this.manager?.enter(id, null);
       },
+      openReward: () => {
+        this.openReward();
+      },
       drop: (weaponId, affixId) => {
         const scope = this.manager?.roomScope;
         const player = playerEntity(this.world);
@@ -142,6 +147,11 @@ export class Game {
       this.clearedEvents++;
       this.renderer.renderRoomWalls(roomCtx(w).walls);
       this.say(event.type === "boss" ? "傀儡核心停止运转" : "区域清空 —— 门已开启", 1.6);
+
+      // 精英 / Boss 清空 → 三选一（会暂停游戏）
+      if ((event.type === "elite" || event.type === "boss") && this.rewards.length === 0) {
+        this.openReward();
+      }
 
       // 掉落：精英/Boss 必掉，普通战斗房 45%
       const chance = event.type === "elite" || event.type === "boss" ? 1 : 0.45;
@@ -192,12 +202,39 @@ export class Game {
     if (hud.get().mode === "paused") hud.patch({ mode: "playing" });
   }
 
+  private openReward() {
+    const w = this.world;
+    const player = playerEntity(w);
+    const race = player === undefined ? "human" : (w.get(player, PlayerTag)?.race ?? "human");
+    this.rewards = buildRewards(w, race);
+    hud.patch({
+      mode: "reward",
+      rewards: this.rewards.map((option) => ({
+        kind: option.kind,
+        name: option.name,
+        desc: option.desc,
+        affix: rewardAffix(option),
+      })),
+    });
+  }
+
+  pickReward(index: number) {
+    if (this.detached) return;
+    const option = this.rewards[index];
+    if (!option) return;
+    const player = playerEntity(this.world);
+    if (player !== undefined) applyReward(this.world, player, option);
+    this.rewards = [];
+    hud.patch({ mode: "playing", rewards: [] });
+  }
+
   toMenu() {
     if (this.detached) return;
     this.runLife.dispose();
     this.runLife = this.life.fork().activate();
     for (const e of this.world.query(PlayerTag).collect()) this.world.despawn(e);
     this.manager = null;
+    this.rewards = [];
     this.renderer.say("", 0);
     hud.patch({ mode: "menu", over: false, won: false, message: "" });
   }
@@ -246,6 +283,7 @@ export class Game {
     this.runLife = this.life.fork().activate();
     for (const e of w.query(PlayerTag).collect()) w.despawn(e);
 
+    this.rewards = [];
     this.manager = new WorldManager(w, this.runLife);
     this.manager.begin(run.seed);
 

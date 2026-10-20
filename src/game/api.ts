@@ -6,6 +6,7 @@ export type Driver = {
   pause: () => void;
   resume: () => void;
   toMenu: () => void;
+  pickReward: (index: number) => void;
 };
 
 let current: Driver | null = null;
@@ -17,6 +18,7 @@ export const api = {
   pause: () => current?.pause(),
   resume: () => current?.resume(),
   toMenu: () => current?.toMenu(),
+  pickReward: (index: number) => current?.pickReward(index),
   bind: (d: Driver) => {
     current = d;
   },

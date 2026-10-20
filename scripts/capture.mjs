@@ -74,15 +74,16 @@ const walkKey = process.argv.find((a) => a.startsWith("--walk="))?.split("=")[1]
 if (walkKey) await evalJs(`window.__dbg.walk('${walkKey}')`);
 if (statusId) await evalJs(`window.__dbg.status('${statusId}')`);
 await sleep(waitMs);
-for (const arg of process.argv.filter((a) => a.startsWith("--key="))) {
-  const code = arg.slice("--key=".length);
-  await evalJs(`window.dispatchEvent(new KeyboardEvent('keydown', { code: '${code}', bubbles: true }))`);
-  await sleep(400);
-}
 const thenScript = process.argv.find((a) => a.startsWith("--then="))?.slice("--then=".length);
 if (thenScript) {
   await evalJs(thenScript);
   await sleep(700);
+}
+for (const arg of process.argv.filter((a) => a.startsWith("--key="))) {
+  const code = arg.slice("--key=".length);
+  const key = code.startsWith("Digit") ? code.slice(5) : code;
+  await evalJs(`window.dispatchEvent(new KeyboardEvent('keydown', { code: '${code}', key: '${key}', bubbles: true }))`);
+  await sleep(400);
 }
 const probe = process.argv.find((a) => a.startsWith("--probe="))?.slice("--probe=".length);
 if (probe) console.log("probe:", (await evalJs(probe))?.result?.value);

@@ -2,6 +2,7 @@ import { useSyncExternalStore } from "react";
 import { hud } from "../game/store";
 import { api } from "../game/api";
 import { Menu } from "./Menu";
+import { RewardPanel } from "./RewardPanel";
 
 const bar = "h-1.5 rounded-full transition-all duration-150";
 
@@ -71,6 +72,7 @@ export function Hud() {
         <div className="mt-2 text-[10px] text-bone/20">ESC 暂停</div>
       </div>
 
+      {s.mode === "reward" && <RewardPanel />}
       {s.mode === "paused" && <PauseOverlay />}
       {(s.over || s.won) && <EndOverlay won={s.won} kills={s.kills} seed={s.seed} />}
     </div>
