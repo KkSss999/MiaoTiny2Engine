@@ -1,7 +1,7 @@
-import type { Entity } from "@core/ecs/index.ts";
-import type { World } from "@core/ecs/index.ts";
+import type { Entity } from "#core/ecs/index.ts";
+import type { World } from "#core/ecs/index.ts";
 import { Position } from "../components.ts";
-import { buildNav, cellIndexOf, computeFlow, type NavGrid } from "../nav.ts";
+import { buildNav, cellIndexOf, computeFlow, type NavGrid } from "#core/nav/index.ts";
 import { playerEntity, roomCtx } from "../query.ts";
 import { NAV } from "../resources.ts";
 import { ROOM_H, ROOM_W } from "../rooms.ts";

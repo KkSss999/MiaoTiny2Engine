@@ -1,5 +1,5 @@
 import { Container } from "pixi.js";
-import type { World } from "@core/ecs/index.ts";
+import type { World } from "#core/ecs/index.ts";
 import { Aim, Loadout, Position } from "../game/components.ts";
 import { getWeapon } from "../game/content.ts";
 import { playerEntity } from "../game/query.ts";

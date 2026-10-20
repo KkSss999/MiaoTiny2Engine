@@ -1,4 +1,4 @@
-import type { World } from "@core/ecs/index.ts";
+import type { World } from "#core/ecs/index.ts";
 import { Health, Statuses } from "../components.ts";
 import { StatusTable } from "../content.ts";
 import { dealDamage } from "../damage.ts";

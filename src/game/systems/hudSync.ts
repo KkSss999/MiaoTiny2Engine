@@ -1,4 +1,4 @@
-import type { World } from "@core/ecs/index.ts";
+import type { World } from "#core/ecs/index.ts";
 import { Health, Implants, Level, Loadout, PlayerTag, Shield, Skills } from "../components.ts";
 import { IMPLANTS } from "../implants.ts";
 import { getAffix, getWeapon } from "../content.ts";

@@ -11,3 +11,4 @@ export { EventBus, EventScope, defineEvent, type EventToken, type Listener, type
 export { DataChanged, type Change, type ChangeType, type Key } from "../db/index.ts";
 export { ENTITY_SCHEMA, componentSchema } from "./changes.ts";
 export { EntityScope } from "./scope.ts";
+export * from "./debug.ts";

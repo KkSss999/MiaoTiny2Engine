@@ -1,4 +1,4 @@
-import type { MachineDef } from "@core/fsm/index.ts";
+import type { MachineDef } from "#core/fsm/index.ts";
 
 export type PlayerCtx = {
   dt: number;

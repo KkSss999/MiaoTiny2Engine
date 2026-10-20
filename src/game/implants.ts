@@ -1,4 +1,4 @@
-import type { Entity, EntityScope, World } from "@core/ecs/index.ts";
+import type { Entity, EntityScope, World } from "#core/ecs/index.ts";
 import type { Race } from "./api.ts";
 import { Circle, EnemyTag, Health, Implants, PlayerTag, Position, Shield } from "./components.ts";
 import { applyStatus } from "./status.ts";

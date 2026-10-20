@@ -1,5 +1,5 @@
-import { EntityScope, type World } from "@core/ecs/index.ts";
-import type { Lifetime } from "@core/event/index.ts";
+import { EntityScope, type World } from "#core/ecs/index.ts";
+import type { Lifetime } from "#core/event/index.ts";
 import { DELTA, OPPOSITE, generateFloor, type Dir, type Floor, type RoomNode, type RoomType } from "../gen/floor.ts";
 import { buildRoom } from "../gen/templates.ts";
 import { boundaryWalls, entryPoint } from "../gen/boundary.ts";

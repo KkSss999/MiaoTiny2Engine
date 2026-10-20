@@ -1,5 +1,5 @@
-import type { World } from "@core/ecs/index.ts";
-import { step } from "@core/fsm/index.ts";
+import type { World } from "#core/ecs/index.ts";
+import { step } from "#core/fsm/index.ts";
 import { Brain, Circle, EliteTag, EnemyTag, Health, Knock, Position } from "../components.ts";
 import { damagePlayer, effects, moveWithWalls, playerEntity, roomCtx } from "../combat.ts";
 import { ENEMY_BEHAVIORS, type EnemyCtx } from "../ai/enemyAi.ts";
@@ -7,7 +7,7 @@ import { sense } from "../ai/perception.ts";
 import { getEnemy } from "../content.ts";
 import { speedMul } from "../status.ts";
 import { runCtx } from "../query.ts";
-import { flowDir, type NavGrid } from "../nav.ts";
+import { flowDir, type NavGrid } from "#core/nav/index.ts";
 import { AFFIX_COLORS } from "../affixes.ts";
 import { NAV } from "../resources.ts";
 import { ROOM_H, ROOM_W } from "../rooms.ts";

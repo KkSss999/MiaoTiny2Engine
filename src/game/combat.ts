@@ -1,4 +1,4 @@
-import type { Entity, World } from "@core/ecs/index.ts";
+import type { Entity, World } from "#core/ecs/index.ts";
 import { Circle, EnemyTag, Health, PlayerTag, Position } from "./components.ts";
 import { EFFECTS } from "./resources.ts";
 import type { EffectQueue } from "./effects.ts";

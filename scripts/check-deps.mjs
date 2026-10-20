@@ -10,6 +10,7 @@ const CORE = fileURLToPath(new URL("../src/core", import.meta.url));
 const ALLOWED = {
   event: [],
   time: [],
+  nav: [],
   db: ["event"],
   ecs: ["event", "db"],
   fsm: ["event"],
@@ -47,8 +48,8 @@ for (const file of walk(CORE)) {
       const resolved = path.resolve(path.dirname(file), spec);
       const rel = path.relative(CORE, resolved);
       if (!rel.startsWith("..")) target = rel.split(path.sep)[0];
-    } else if (spec.startsWith("@core/")) {
-      target = spec.slice("@core/".length).split("/")[0];
+    } else if (spec.startsWith("#core/")) {
+      target = spec.slice("#core/".length).split("/")[0];
     }
     if (!target || !LAYERS.includes(target) || target === from) continue;
 
@@ -71,4 +72,4 @@ if (violations.length > 0) {
   for (const v of violations) console.error("  ✗ " + v);
   process.exit(1);
 }
-console.log("✓ 依赖方向正确：event/time ← db ← ecs，event ← fsm");
+console.log("✓ 依赖方向正确：event/time/nav ← db ← ecs，event ← fsm");

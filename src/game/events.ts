@@ -1,5 +1,5 @@
-import { defineEvent } from "@core/ecs/index.ts";
-import type { Entity } from "@core/ecs/index.ts";
+import { defineEvent } from "#core/ecs/index.ts";
+import type { Entity } from "#core/ecs/index.ts";
 import type { RoomType } from "./gen/floor.ts";
 
 /** 延迟事件：房间清空（由编排层在帧末处理视觉表现） */

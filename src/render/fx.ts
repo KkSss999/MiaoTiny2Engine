@@ -1,4 +1,4 @@
-import type { World } from "@core/ecs/index.ts";
+import type { World } from "#core/ecs/index.ts";
 import { PlayerTag, Position } from "../game/components.ts";
 import { EntityKilled, PlayerDamaged } from "../game/events.ts";
 import { playerEntity } from "../game/combat.ts";

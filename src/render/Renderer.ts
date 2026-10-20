@@ -1,5 +1,5 @@
 import { Application, Container, Text } from "pixi.js";
-import type { Entity, World } from "@core/ecs/index.ts";
+import type { Entity, World } from "#core/ecs/index.ts";
 import { Aim, EnemyTag, PlayerTag, Position, SpriteRef, Velocity } from "../game/components.ts";
 import { SORTED_LAYERS } from "../game/layers.ts";
 import type { RoomCtx } from "../game/resources.ts";

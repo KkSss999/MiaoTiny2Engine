@@ -1,4 +1,4 @@
-import type { World } from "@core/ecs/index.ts";
+import type { World } from "#core/ecs/index.ts";
 import { Circle, EnemyTag, Position, Totem } from "../components.ts";
 import { damageEnemy, effects } from "../combat.ts";
 

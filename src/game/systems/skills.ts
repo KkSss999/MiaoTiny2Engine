@@ -1,4 +1,4 @@
-import type { World } from "@core/ecs/index.ts";
+import type { World } from "#core/ecs/index.ts";
 import { Aim, PlayerTag, Position, Skills } from "../components.ts";
 import { input } from "../input.ts";
 import { playerEntity, runCtx } from "../query.ts";

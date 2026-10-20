@@ -1,5 +1,5 @@
-import type { Entity, EntityScope, World } from "@core/ecs/index.ts";
-import { createMachine } from "@core/fsm/index.ts";
+import type { Entity, EntityScope, World } from "#core/ecs/index.ts";
+import { createMachine } from "#core/fsm/index.ts";
 import type { Race } from "../api.ts";
 import type { WeaponSlot } from "../components.ts";
 import { allAffixes, getEnemy, getWeapon } from "../content.ts";

@@ -1,4 +1,5 @@
-import type { Rect } from "./rooms.ts";
+/** 与房间墙体重合的最小矩形描述 */
+export type NavRect = { x: number; y: number; w: number; h: number };
 
 /**
  * 房间内导航场：
@@ -19,10 +20,10 @@ export type NavGrid = {
   version: number;
 };
 
-const overlap = (ax: number, ay: number, aw: number, ah: number, r: Rect): boolean =>
+const overlap = (ax: number, ay: number, aw: number, ah: number, r: NavRect): boolean =>
   ax < r.x + r.w && ax + aw > r.x && ay < r.y + r.h && ay + ah > r.y;
 
-export function buildNav(walls: Rect[], width: number, height: number, cell = 40, inflate = 14): NavGrid {
+export function buildNav(walls: NavRect[], width: number, height: number, cell = 40, inflate = 14): NavGrid {
   const cols = Math.ceil(width / cell) + 1;
   const rows = Math.ceil(height / cell) + 1;
   const blocked = new Uint8Array(cols * rows);

@@ -1,4 +1,4 @@
-import { Database, defineTable, s } from "@core/db/index.ts";
+import { Database, defineTable, s } from "#core/db/index.ts";
 import { TEMPLATES, type RoomTemplate } from "./gen/templateData.ts";
 
 /**
@@ -139,7 +139,12 @@ contentDb.register(WeaponTable);
 contentDb.register(AffixTable);
 contentDb.register(EnemyTable);
 
+let loaded = false;
+
+/** 内容表入库。幂等：测试里反复建世界也只灌一次。 */
 export function loadContent(): number {
+  if (loaded) return 0;
+  loaded = true;
   let n = contentDb.seed("roomTemplates", Object.values(TEMPLATES));
   n += contentDb.seed("enemies", ENEMIES);
   n += contentDb.seed("statuses", CONTENT.statuses);

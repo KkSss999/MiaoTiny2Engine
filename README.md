@@ -9,7 +9,7 @@
 ```bash
 pnpm install
 pnpm dev                     # http://localhost:5173
-pnpm test:all                # core 五个模块的单测（event/time/db/ecs/fsm）
+pnpm test:all                # core 单测 + 游戏层单测（寻路/伤害/奖励）
 ```
 
 | 地址 | 作用 |
@@ -77,6 +77,7 @@ src/game/              游戏层
   status.ts             状态效果（燃烧/冰冻/诅咒）：施加、倍率查询
   skills.ts             技能表：冷却/消耗 + 施法实现
   combat.ts             碰撞、爆炸、玩家/敌人受伤入口（无 pixi）
+  test/                 游戏层单测（不需要浏览器）
   effects.ts            系统不造实体，只投递“要生成什么”
   world/WorldManager.ts 楼层协调器（不留资源，只用 run 的 Lifetime 装房间作用域）
   entities/factory.ts   实体构造（玩家/敌人/子弹/道具）

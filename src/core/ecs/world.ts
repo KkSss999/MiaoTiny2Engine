@@ -1,5 +1,5 @@
 import { EntityAllocator, entityIndex, type Entity } from "./entity.ts";
-import type { ComponentType } from "./component.ts";
+import { componentName, type ComponentType } from "./component.ts";
 import { Archetype } from "./archetype.ts";
 import { Query } from "./query.ts";
 import { CommandBuffer } from "./commands.ts";
@@ -47,6 +47,16 @@ export class World {
 
   isAlive(e: Entity): boolean {
     return this.entities.isAlive(e);
+  }
+
+  /** 工具/调试用：列出实体上的全部组件（名字 + 值）。不是热路径。 */
+  snapshot(e: Entity): { name: string; value: unknown }[] | null {
+    if (!this.entities.isAlive(e)) return null;
+    const idx = entityIndex(e);
+    const arch = this.archOf[idx];
+    if (!arch) return null;
+    const values = arch.readRow(this.rowOf[idx]);
+    return arch.types.map((type, i) => ({ name: componentName(type), value: values[i] }));
   }
 
   // ---------------------------------------------------------------- entities

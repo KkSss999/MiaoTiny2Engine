@@ -1,4 +1,4 @@
-import type { Entity, World } from "@core/ecs/index.ts";
+import type { Entity, World } from "#core/ecs/index.ts";
 import { Statuses, type StatusInstance } from "./components.ts";
 import { StatusTable } from "./content.ts";
 

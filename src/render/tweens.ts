@@ -1,4 +1,4 @@
-import type { Entity } from "@core/ecs/index.ts";
+import type { Entity } from "#core/ecs/index.ts";
 
 type Tween = { e: Entity; from: number; to: number; t: number; dur: number };
 

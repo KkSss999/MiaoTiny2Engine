@@ -1,8 +1,8 @@
-import { defineComponent } from "@core/ecs/index.ts";
-import { defineShape, s } from "@core/db/index.ts";
+import { defineComponent } from "#core/ecs/index.ts";
+import { defineShape, s } from "#core/db/index.ts";
 import type { Race } from "./api";
 import type { Layer } from "./layers";
-import type { MachineData } from "@core/fsm/index.ts";
+import type { MachineData } from "#core/fsm/index.ts";
 
 export const Position = defineComponent(
   "Position",

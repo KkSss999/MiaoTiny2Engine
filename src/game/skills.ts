@@ -1,4 +1,4 @@
-import type { Entity, World } from "@core/ecs/index.ts";
+import type { Entity, World } from "#core/ecs/index.ts";
 import type { Race } from "./api.ts";
 import { Circle, EnemyTag, Position } from "./components.ts";
 import { damageEnemy, effects, shake } from "./combat.ts";

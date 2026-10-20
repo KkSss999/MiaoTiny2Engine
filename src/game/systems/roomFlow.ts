@@ -1,4 +1,4 @@
-import type { World } from "@core/ecs/index.ts";
+import type { World } from "#core/ecs/index.ts";
 import { EnemyTag, Health, Position } from "../components.ts";
 import { playerEntity, roomCtx, runCtx } from "../combat.ts";
 import { RoomCleared } from "../events.ts";

@@ -1,4 +1,4 @@
-import type { Entity, World } from "@core/ecs/index.ts";
+import type { Entity, World } from "#core/ecs/index.ts";
 import { PlayerTag } from "./components.ts";
 import { ROOM, RUN, type RoomCtx, type RunCtx } from "./resources.ts";
 
