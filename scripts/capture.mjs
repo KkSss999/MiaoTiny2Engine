@@ -37,9 +37,16 @@ const ws = new WebSocket(await wsUrl());
 await new Promise((r) => (ws.onopen = r));
 let id = 0;
 const pending = new Map();
+const errors = [];
 ws.onmessage = (ev) => {
   const m = JSON.parse(ev.data);
-  if (m.id && pending.has(m.id)) { pending.get(m.id)(m.result ?? m.error); pending.delete(m.id); }
+  if (m.id && pending.has(m.id)) { pending.get(m.id)(m.result ?? m.error); pending.delete(m.id); return; }
+  if (m.method === "Runtime.exceptionThrown") {
+    errors.push(m.params.exceptionDetails?.exception?.description ?? m.params.exceptionDetails?.text);
+  }
+  if (m.method === "Runtime.consoleAPICalled" && m.params.type === "error") {
+    errors.push(m.params.args.map((a) => a.description ?? a.value).join(" "));
+  }
 };
 const send = (method, params = {}) => new Promise((res) => { const i = ++id; pending.set(i, res); ws.send(JSON.stringify({ id: i, method, params })); });
 const evalJs = (e) => send("Runtime.evaluate", { expression: e, returnByValue: true });
@@ -92,8 +99,10 @@ if (move) {
 const click = process.argv.find((a) => a.startsWith("--click="))?.split("=")[1];
 if (click) {
   const [cx, cy] = click.split(",").map(Number);
+  await send("Input.dispatchMouseEvent", { type: "mouseMoved", x: cx, y: cy, button: "none" });
   await send("Input.dispatchMouseEvent", { type: "mousePressed", x: cx, y: cy, button: "left", clickCount: 1 });
-  await sleep(150);
+  await send("Input.dispatchMouseEvent", { type: "mouseReleased", x: cx, y: cy, button: "left", clickCount: 1 });
+  await sleep(250);
 }
 
 const thenScript = process.argv.find((a) => a.startsWith("--then="))?.slice("--then=".length);
@@ -114,6 +123,10 @@ console.log("state:", st?.result?.value);
 const shot = await send("Page.captureScreenshot", { format: "png" });
 writeFileSync(out, Buffer.from(shot.data, "base64"));
 console.log("wrote", out);
+if (errors.length) {
+  console.log("--- 页面异常");
+  for (const e of errors.slice(0, 5)) console.log(String(e).slice(0, 400));
+}
 ws.close();
 chrome.kill();
 process.exit(0);

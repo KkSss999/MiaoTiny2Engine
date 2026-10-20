@@ -3,14 +3,16 @@ import { Game } from "./game/game";
 import { api } from "./game/api";
 import { Hud } from "./ui/Hud";
 import { MapDebug } from "./ui/MapDebug";
+import { ContentEditor } from "./ui/ContentEditor";
 
 export default function App() {
   const params = new URLSearchParams(location.search);
   const isMapDebug = params.get("debug") === "map";
+  const isContentDebug = params.get("debug") === "content";
   const hostRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (isMapDebug || !hostRef.current) return;
+    if (isMapDebug || isContentDebug || !hostRef.current) return;
     const game = new Game();
     let cancelled = false;
     const race = new URLSearchParams(location.search).get("race");
@@ -23,9 +25,10 @@ export default function App() {
       cancelled = true;
       game.destroy();
     };
-  }, [isMapDebug]);
+  }, [isMapDebug, isContentDebug]);
 
   if (isMapDebug) return <MapDebug />;
+  if (isContentDebug) return <ContentEditor />;
 
   return (
     <div className="relative h-full w-full bg-void text-bone">

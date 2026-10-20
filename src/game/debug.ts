@@ -10,6 +10,7 @@ import { hud } from "./store.ts";
 import { applyStatus } from "./status.ts";
 import { grantXp } from "./damage.ts";
 import { equip, rollDrop } from "./systems/weapons.ts";
+import { AffixTable, EnemyTable, StatusTable, WeaponTable } from "./content.ts";
 import { spawnDrop } from "./entities/factory.ts";
 
 export type DebugDeps = {
@@ -121,6 +122,16 @@ export function installDebugHooks(deps: DebugDeps): void {
     .register("entities", (filter?: string[]) => listEntities(w, filter ?? []), "列出实体，可传组件名过滤")
     .register("inspect", (entity: number) => inspectEntity(w, entity), "查看某个实体的全部组件")
     .register("counts", () => countComponents(w), "各组件挂了多少实例")
+    .register(
+      "content",
+      () => ({
+        weapons: WeaponTable.list().length,
+        enemies: EnemyTable.list().length,
+        affixes: AffixTable.list().length,
+        statuses: StatusTable.list().length,
+      }),
+      "内容表行数",
+    )
     .register("state", () => summary(w, deps), "玩家 / 房间 / 战斗摘要");
 
   // ---- 游戏命令
