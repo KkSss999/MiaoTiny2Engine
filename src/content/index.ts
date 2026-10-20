@@ -1,6 +1,6 @@
 import { Database } from "#core/db/index.ts";
-import { TEMPLATES, type RoomTemplate } from "./gen/templateData.ts";
-import { AffixTable, AnimationTable, EnemyTable, RoomTemplates, StatusTable, WeaponTable } from "./contentSchema.ts";
+import { TEMPLATES, type RoomTemplate } from "../game/gen/templateData.ts";
+import { AffixTable, AnimationTable, EnemyTable, RoomTemplates, StatusTable, WeaponTable } from "./schema.ts";
 
 import weaponsJson from "../../content/weapons.json" with { type: "json" };
 import enemiesJson from "../../content/enemies.json" with { type: "json" };
@@ -8,7 +8,7 @@ import affixesJson from "../../content/affixes.json" with { type: "json" };
 import statusesJson from "../../content/statuses.json" with { type: "json" };
 import animationsJson from "../../content/animations.json" with { type: "json" };
 
-// 表定义从这里转发，老的 `from "./content.ts"` 引用不用改
+// 表定义从这里转发，老的 `from "#content/index.ts"` 引用不用改
 export { AffixTable, AnimationTable, EnemyTable, RoomTemplates, StatusTable, WeaponTable };
 
 /** 内容数据：改 JSON 即可，不用改代码 */

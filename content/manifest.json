@@ -1,0 +1,27 @@
+{
+  "sprites": [
+    { "id": "player.human", "size": [32, 32] },
+    { "id": "player.undead", "size": [32, 32] },
+    { "id": "enemy.melee", "size": [32, 32] },
+    { "id": "enemy.turret", "size": [36, 36] },
+    { "id": "enemy.sentry", "size": [32, 32] },
+    { "id": "enemy.charger", "size": [40, 40] },
+    { "id": "enemy.boss", "size": [120, 120] },
+    { "id": "prop.barrel", "size": [44, 44] },
+    { "id": "prop.crystal", "size": [44, 44] },
+    { "id": "bullet.friendly", "size": [8, 4] },
+    { "id": "bullet.hostile", "size": [8, 4] },
+    { "id": "weapon.gun", "size": [28, 8] },
+    { "id": "weapon.melee", "size": [52, 36] },
+    { "id": "weapon.spell", "size": [38, 14] },
+    { "id": "weapon.totem", "size": [30, 16] },
+    { "id": "pickup.weapon", "size": [24, 28] },
+    { "id": "fx.spark", "size": [8, 8] },
+    { "id": "fx.totem", "size": [44, 44] },
+    { "id": "debug.box", "size": [24, 24] }
+  ],
+  "sheets": [
+    { "id": "pulse", "frameWidth": 48, "frameHeight": 48, "cols": 4, "rows": 1 }
+  ],
+  "audio": []
+}

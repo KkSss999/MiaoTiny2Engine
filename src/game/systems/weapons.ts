@@ -1,6 +1,6 @@
 import type { Entity, World } from "#core/ecs/index.ts";
 import { Aim, Loadout, Pickup, Position, type WeaponSlot } from "../components.ts";
-import { allAffixes, allWeapons, getWeapon } from "../content.ts";
+import { allAffixes, allWeapons, getWeapon } from "#content/index.ts";
 import { input } from "../input.ts";
 import { effects } from "../combat.ts";
 import { playerEntity, runCtx } from "../query.ts";

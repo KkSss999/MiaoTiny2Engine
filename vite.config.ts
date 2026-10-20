@@ -9,6 +9,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "#core": fileURLToPath(new URL("./src/core", import.meta.url)),
+      "#content": fileURLToPath(new URL("./src/content", import.meta.url)),
     },
   },
   server: { port: 5173, strictPort: false },

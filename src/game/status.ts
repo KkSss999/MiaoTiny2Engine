@@ -1,6 +1,6 @@
 import type { Entity, World } from "#core/ecs/index.ts";
 import { Statuses, type StatusInstance } from "./components.ts";
-import { StatusTable } from "./content.ts";
+import { StatusTable } from "#content/index.ts";
 
 export function applyStatus(world: World, entity: Entity, id: string, magnitude = 1): void {
   const def = StatusTable.get(id);

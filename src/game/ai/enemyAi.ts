@@ -1,5 +1,5 @@
 import type { MachineDef } from "#core/agent/index.ts";
-import type { EnemyDef } from "../content.ts";
+import type { EnemyDef } from "#content/index.ts";
 import type { Threat } from "./perception.ts";
 import { contact, firePattern, summonAdds } from "./attacks.ts";
 import { approachAtAngle, flee, keepDistance, seek } from "./steering.ts";

@@ -4,7 +4,7 @@ import { Brain, Circle, EliteTag, EnemyTag, Health, Knock, Position } from "../c
 import { damagePlayer, effects, moveWithWalls, playerEntity, roomCtx } from "../combat.ts";
 import { ENEMY_BEHAVIORS, type EnemyCtx } from "../ai/enemyAi.ts";
 import { sense } from "../ai/perception.ts";
-import { getEnemy } from "../content.ts";
+import { getEnemy } from "#content/index.ts";
 import { speedMul } from "../status.ts";
 import { runCtx } from "../query.ts";
 import { flowDir, type NavGrid } from "#core/agent/index.ts";

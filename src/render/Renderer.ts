@@ -29,7 +29,7 @@ import { BossBar } from "./bossBar.ts";
 import { DamageNumbers } from "./damageNumbers.ts";
 import { getSheetFrame, prepareSheets } from "./sheets.ts";
 import { Anim } from "../game/components.ts";
-import { getClip } from "../game/content.ts";
+import { getClip } from "#content/index.ts";
 import type { Sprite } from "pixi.js";
 import { PlayerWeapon } from "./playerWeapon.ts";
 import { WeaponFired } from "../game/events.ts";

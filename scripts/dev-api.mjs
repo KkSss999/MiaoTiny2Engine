@@ -19,7 +19,7 @@ function writeTable(table, rows) {
 }
 
 async function schemas() {
-  const { AffixTable, AnimationTable, EnemyTable, StatusTable, WeaponTable } = await import("../src/game/contentSchema.ts");
+  const { AffixTable, AnimationTable, EnemyTable, StatusTable, WeaponTable } = await import("../src/content/schema.ts");
   return {
     weapons: WeaponTable,
     enemies: EnemyTable,

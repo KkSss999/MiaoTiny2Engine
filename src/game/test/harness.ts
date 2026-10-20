@@ -1,5 +1,5 @@
 import { World, type EntityScope } from "#core/ecs/index.ts";
-import { loadContent } from "../content.ts";
+import { loadContent } from "#content/index.ts";
 import { installDamageRules } from "../damage.ts";
 import { makeRoomCtx, makeRunCtx, ROOM, RUN } from "../resources.ts";
 

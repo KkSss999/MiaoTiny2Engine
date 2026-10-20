@@ -1,4 +1,4 @@
-import { applyContentPatch } from "./content.ts";
+import { applyContentPatch } from "#content/index.ts";
 
 /**
  * 开发期热更新通道。

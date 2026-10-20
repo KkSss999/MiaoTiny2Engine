@@ -1,7 +1,7 @@
 import { Container, Graphics, Text } from "pixi.js";
 import type { Entity, World } from "#core/ecs/index.ts";
 import { Circle, EliteTag, EnemyTag, Health, Position } from "../game/components.ts";
-import { getEnemy } from "../game/content.ts";
+import { getEnemy } from "#content/index.ts";
 import { AFFIX_COLORS } from "../game/affixes.ts";
 
 type Plate = { root: Container; bar: Graphics; label: Text; tint: number };

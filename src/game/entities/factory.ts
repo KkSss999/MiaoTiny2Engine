@@ -2,7 +2,7 @@ import type { Entity, EntityScope, World } from "#core/ecs/index.ts";
 import { createMachine } from "#core/agent/index.ts";
 import type { Race } from "../api.ts";
 import type { WeaponSlot } from "../components.ts";
-import { allAffixes, getClip, getEnemy, getWeapon } from "../content.ts";
+import { allAffixes, getClip, getEnemy, getWeapon } from "#content/index.ts";
 import { AFFIX_COLORS } from "../affixes.ts";
 import type { Effect } from "../effects.ts";
 import { ROOM_H } from "../rooms.ts";

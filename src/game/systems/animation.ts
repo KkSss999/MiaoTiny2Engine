@@ -1,6 +1,6 @@
 import type { World } from "#core/ecs/index.ts";
 import { Anim } from "../components.ts";
-import { getClip } from "../content.ts";
+import { getClip } from "#content/index.ts";
 
 /**
  * 帧动画推进：时间累加 → 槽位取模 → 写入 frame。

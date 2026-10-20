@@ -1,7 +1,7 @@
 import { Container, Graphics, Text } from "pixi.js";
 import type { World } from "#core/ecs/index.ts";
 import { EnemyTag, Health } from "../game/components.ts";
-import { getEnemy } from "../game/content.ts";
+import { getEnemy } from "#content/index.ts";
 
 const BAR_W = 420;
 const BAR_H = 9;

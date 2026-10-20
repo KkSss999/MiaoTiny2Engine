@@ -3,7 +3,7 @@ import { defineEvent } from "#core/kernel/index.ts";
 import { Brain, EnemyTag, Health, Implants, Level, PlayerTag } from "./components.ts";
 import { damageTakenMul } from "./status.ts";
 import { runCtx } from "./query.ts";
-import { getEnemy } from "./content.ts";
+import { getEnemy } from "#content/index.ts";
 
 export type DamageKind = "bullet" | "melee" | "explosion" | "dot" | "contact";
 

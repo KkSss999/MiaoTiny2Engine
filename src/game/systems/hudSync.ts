@@ -1,7 +1,7 @@
 import type { World } from "#core/ecs/index.ts";
 import { Health, Implants, Level, Loadout, PlayerTag, Shield, Skills } from "../components.ts";
 import { IMPLANTS } from "../implants.ts";
-import { getAffix, getWeapon } from "../content.ts";
+import { getAffix, getWeapon } from "#content/index.ts";
 import { SKILLS } from "../skills.ts";
 import { playerEntity, roomCtx, runCtx } from "../combat.ts";
 import { hud } from "../store.ts";

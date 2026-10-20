@@ -1,6 +1,6 @@
 import type { World } from "#core/ecs/index.ts";
 import { Health, Statuses } from "../components.ts";
-import { StatusTable } from "../content.ts";
+import { StatusTable } from "#content/index.ts";
 import { dealDamage } from "../damage.ts";
 
 /** 状态效果 tick：计时、结算持续伤害、过期清理 */

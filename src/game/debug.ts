@@ -10,7 +10,7 @@ import { hud } from "./store.ts";
 import { applyStatus } from "./status.ts";
 import { grantXp } from "./damage.ts";
 import { equip, rollDrop } from "./systems/weapons.ts";
-import { AffixTable, EnemyTable, StatusTable, WeaponTable, applyContentPatch } from "./content.ts";
+import { AffixTable, EnemyTable, StatusTable, WeaponTable, applyContentPatch } from "#content/index.ts";
 import { spawnDrop } from "./entities/factory.ts";
 
 export type DebugDeps = {

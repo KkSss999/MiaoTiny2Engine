@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { AnimatedSprite, Application, Container, Graphics, Text, type Texture } from "pixi.js";
 import { SPRITES, type SpriteId } from "../render/assets.ts";
 import { getSheetFrame, prepareSheets } from "../render/sheets.ts";
-import { allClips } from "../game/content.ts";
+import { allClips } from "#content/index.ts";
 
 /**
  * 资源画廊：把 assets.ts 里每个程序化图形画出来看一眼。

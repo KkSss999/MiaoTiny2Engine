@@ -4,7 +4,8 @@
   "version": "0.0.1",
   "type": "module",
   "imports": {
-    "#core/*": "./src/core/*"
+    "#core/*": "./src/core/*",
+    "#content/*": "./src/content/*"
   },
   "scripts": {
     "dev": "vite",

@@ -1,7 +1,7 @@
 import type { Entity, World } from "#core/ecs/index.ts";
 import type { Race } from "./api.ts";
 import { Health, Implants, PlayerTag } from "./components.ts";
-import { allAffixes, allWeapons, getAffix, getWeapon } from "./content.ts";
+import { allAffixes, allWeapons, getAffix, getWeapon } from "#content/index.ts";
 import { IMPLANTS, addImplant, implantPool } from "./implants.ts";
 import { equip } from "./systems/weapons.ts";
 
