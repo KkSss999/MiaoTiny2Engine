@@ -26,6 +26,8 @@ import { RoomView } from "./roomView.ts";
 import { shakeOffset } from "./camera.ts";
 import { Nameplates } from "./nameplates.ts";
 import { BossBar } from "./bossBar.ts";
+import { DamageNumbers } from "./damageNumbers.ts";
+import { DamageLanded } from "../game/damage.ts";
 
 type SpriteRefValue = {
   spriteId: string;
@@ -52,6 +54,7 @@ export class Renderer {
   private msgTimer = 0;
   private plates: Nameplates;
   private bossBar: BossBar;
+  private damage: DamageNumbers;
   private prev = new Map<Entity, { x: number; y: number }>();
 
   constructor(app: Application, world: World) {
@@ -60,6 +63,7 @@ export class Renderer {
     this.layers = createLayers();
     this.views = new ViewRegistry(world, this.layers);
     this.plates = new Nameplates(this.layers.overlay);
+    this.damage = new DamageNumbers(this.layers.overlay);
     this.bossBar = new BossBar();
     this.msg = new Text({
       text: "",
@@ -89,6 +93,26 @@ export class Renderer {
       const room = this.world.resource<RoomCtx>(ROOM);
       this.room.renderFloor();
       this.room.renderWalls(room.walls);
+    });
+
+    // 伤害飘字：只读事件，不改任何数据
+    this.world.bus.on(DamageLanded, ({ packet, applied }) => {
+      const pos = this.world.get(packet.target, Position);
+      if (!pos || applied <= 0) return;
+
+      let color = 0xe8e2d0;
+      let scale = 1;
+      if (this.world.has(packet.target, PlayerTag)) {
+        color = 0xff6b6b;
+        scale = 1.2;
+      } else if (packet.kind === "dot") {
+        color = 0xffa04a;
+        scale = 0.72;
+      } else if (this.world.get(packet.target, Brain)?.state === "recover") {
+        color = 0xffd166;
+        scale = 1.15;
+      }
+      this.damage.spawn(pos.x, pos.y - 16, applied, color, scale);
     });
 
     // 出生弹入：读组件上的标记，而不是由编排层点名
@@ -196,6 +220,8 @@ export class Renderer {
     this.plates.sync(this.world, posOf);
     this.bossBar.sync(this.world, this.app.screen.width, this.app.screen.height, dt);
 
+    // 暂停时飘字停在原地，不继续漂
+    if (hud.get().mode === "playing") this.damage.update(dt);
     this.tweens.update(dt);
     this.particles.update(dt);
     this.particles.draw();
