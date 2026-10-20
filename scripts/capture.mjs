@@ -82,6 +82,20 @@ const walkKey = process.argv.find((a) => a.startsWith("--walk="))?.split("=")[1]
 if (walkKey) await evalJs(`window.__dbg.walk('${walkKey}')`);
 if (statusId) await evalJs(`window.__dbg.status('${statusId}')`);
 await sleep(waitMs);
+// 真实鼠标事件（走命中测试，能验证 HUD 有没有挡住画布）
+const move = process.argv.find((a) => a.startsWith("--move="))?.split("=")[1];
+if (move) {
+  const [mx, my] = move.split(",").map(Number);
+  await send("Input.dispatchMouseEvent", { type: "mouseMoved", x: mx, y: my, button: "none" });
+  await sleep(120);
+}
+const click = process.argv.find((a) => a.startsWith("--click="))?.split("=")[1];
+if (click) {
+  const [cx, cy] = click.split(",").map(Number);
+  await send("Input.dispatchMouseEvent", { type: "mousePressed", x: cx, y: cy, button: "left", clickCount: 1 });
+  await sleep(150);
+}
+
 const thenScript = process.argv.find((a) => a.startsWith("--then="))?.slice("--then=".length);
 if (thenScript) {
   await evalJs(thenScript);

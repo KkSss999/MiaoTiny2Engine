@@ -9,7 +9,7 @@ export function UiShell({ children }: { children: ReactNode }) {
   const scale = useUiScale();
   return (
     <div
-      className="absolute left-0 top-0"
+      className="pointer-events-none absolute left-0 top-0"
       style={{
         width: `${100 / scale}%`,
         height: `${100 / scale}%`,
