@@ -34,7 +34,7 @@ export class BossBar {
     stage.addChild(this.root);
   }
 
-  sync(world: World, screenW: number, screenH: number, dt: number): void {
+  sync(world: World, screenW: number, screenH: number, dt: number, ui = 1): void {
     let bossHp = -1;
     let bossMax = 1;
     let bossName = "";
@@ -52,7 +52,8 @@ export class BossBar {
     }
 
     this.root.visible = true;
-    this.root.position.set(Math.round(screenW / 2), Math.round(screenH - 116));
+    this.root.scale.set(ui);
+    this.root.position.set(Math.round(screenW / 2), Math.round(screenH - 116 * ui));
 
     const ratio = Math.max(0, Math.min(1, bossHp / bossMax));
     const k = Math.min(1, dt * 12);

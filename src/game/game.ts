@@ -9,6 +9,7 @@ import { ROOM_H, ROOM_W } from "./rooms.ts";
 import type { RoomNode } from "./gen/floor.ts";
 import { PlayerTag, Position } from "./components.ts";
 import { Renderer } from "../render/Renderer.ts";
+import { viewZoom } from "../render/camera.ts";
 import { prepareAssets } from "../render/assets.ts";
 import { installFx } from "../render/fx.ts";
 import { EffectQueue } from "./effects.ts";
@@ -148,7 +149,7 @@ export class Game {
     w.setResource<RoomCtx>(ROOM, makeRoomCtx());
     w.setResource<RunCtx>(RUN, makeRunCtx());
     w.setResource<EffectQueue>(EFFECTS, new EffectQueue());
-    w.setResource<ViewCtx>(VIEW, { camX: 0, camY: 0, width: 1440, height: 900 });
+    w.setResource<ViewCtx>(VIEW, { camX: 0, camY: 0, width: 1440, height: 900, zoom: 1 });
     w.setResource<DebugCtx>(DEBUG, { autoAim: false, autoWalk: null });
 
     // 开发期：带 shape 的组件在 add 时过一遍 @gdd/db 的校验
@@ -321,7 +322,7 @@ export class Game {
 
     const view = this.world.resource<ViewCtx>(VIEW);
     const run = runCtx(this.world);
-    this.renderer.render(tick.alpha, view.camX, view.camY, run.trauma, tick.deltaMs / 1000);
+    this.renderer.render(tick.alpha, view.camX, view.camY, run.trauma, tick.deltaMs / 1000, view.zoom);
   };
 
   private step(dt: number) {
@@ -380,8 +381,11 @@ export class Game {
 
   private updateView() {
     const view = this.world.resource<ViewCtx>(VIEW);
-    view.width = this.app.screen.width;
-    view.height = this.app.screen.height;
+    const zoom = viewZoom(this.app.screen.height);
+    view.zoom = zoom;
+    // 世界单位下的可视范围
+    view.width = this.app.screen.width / zoom;
+    view.height = this.app.screen.height / zoom;
     const pe = playerEntity(this.world);
     if (pe === undefined) return;
     const pos = this.world.require(pe, Position);

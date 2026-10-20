@@ -23,7 +23,8 @@ export type RunCtx = {
   won: boolean;
 };
 
-export type ViewCtx = { camX: number; camY: number; width: number; height: number };
+/** width/height 是世界单位下的可视范围（= 屏幕尺寸 / zoom） */
+export type ViewCtx = { camX: number; camY: number; width: number; height: number; zoom: number };
 export type DebugCtx = { autoAim: boolean; autoWalk: string | null };
 
 export const ROOM = "room";

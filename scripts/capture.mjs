@@ -7,6 +7,8 @@ import { join } from "node:path";
 const url = process.argv[2] ?? "http://127.0.0.1:5199/";
 const out = process.argv[3] ?? "/tmp/cap.png";
 const auto = process.argv.includes("--auto");
+const size = process.argv.find((a) => a.startsWith("--size="))?.split("=")[1];
+const [vw, vh] = size ? size.split("x").map(Number) : [1440, 900];
 const waitMs = Number(process.argv.find((a) => a.startsWith("--wait="))?.split("=")[1] ?? 2500);
 const port = 9700 + Math.floor(Math.random() * 200);
 const profile = mkdtempSync(join(tmpdir(), "cdp-"));
@@ -15,7 +17,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const chrome = spawn("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", [
   "--headless=new", "--no-sandbox", "--hide-scrollbars",
   `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`,
-  "--window-size=1440,900", "--enable-unsafe-swiftshader", "--use-gl=angle", "--use-angle=swiftshader",
+  `--window-size=${vw},${vh}`, "--enable-unsafe-swiftshader", "--use-gl=angle", "--use-angle=swiftshader",
   "about:blank",
 ], { stdio: ["ignore", "ignore", "ignore"] });
 
@@ -44,7 +46,7 @@ const evalJs = (e) => send("Runtime.evaluate", { expression: e, returnByValue: t
 
 await send("Runtime.enable");
 await send("Page.enable");
-await send("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+await send("Emulation.setDeviceMetricsOverride", { width: vw, height: vh, deviceScaleFactor: 1, mobile: false });
 await send("Page.navigate", { url });
 // 等游戏实例就绪（首屏要等 vite 预构建 + Pixi 初始化）
 for (let i = 0; i < 60; i++) {

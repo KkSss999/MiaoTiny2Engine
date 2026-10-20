@@ -17,6 +17,7 @@ export type SpriteId =
   | "weapon.spell"
   | "weapon.totem"
   | "pickup.weapon"
+  | "fx.spark"
   | "fx.totem"
   | "debug.box";
 
@@ -135,6 +136,12 @@ export const SPRITES: Record<SpriteId, SpriteAsset> = {
     key: "pickup.weapon",
     draw: (g) => {
       g.poly([0, -14, 12, 0, 0, 14, -12, 0]).fill(0xffffff).stroke({ width: 2, color: 0x0a0e14 });
+    },
+  },
+  "fx.spark": {
+    key: "fx.spark",
+    draw: (g) => {
+      g.circle(0, 0, 4).fill(0xffffff);
     },
   },
   "fx.totem": {

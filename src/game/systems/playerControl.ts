@@ -33,7 +33,9 @@ export function playerControlSystem(w: World, dt: number): void {
   const view = w.resource<ViewCtx>(VIEW);
   const dbg = w.resource<DebugCtx>(DEBUG);
 
-  let angle = Math.atan2(input.mouseY + view.camY - pos.y, input.mouseX + view.camX - pos.x);
+  const mouseWorldX = view.camX + input.mouseX / view.zoom;
+  const mouseWorldY = view.camY + input.mouseY / view.zoom;
+  let angle = Math.atan2(mouseWorldY - pos.y, mouseWorldX - pos.x);
   if (dbg.autoAim) {
     let best: { x: number; y: number; d: number } | null = null;
     w.query(Position, EnemyTag).forEach((_e, ep) => {

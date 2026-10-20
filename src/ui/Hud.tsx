@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { UiShell } from "./UiShell";
 import { hud } from "../game/store";
 import { api } from "../game/api";
 import { Menu } from "./Menu";
@@ -9,11 +10,18 @@ const bar = "h-1.5 rounded-full transition-all duration-150";
 export function Hud() {
   const s = useSyncExternalStore(hud.subscribe, hud.get);
 
-  if (s.mode === "menu") return <Menu />;
+  if (s.mode === "menu") {
+    return (
+      <UiShell>
+        <Menu />
+      </UiShell>
+    );
+  }
 
   const hpPct = Math.max(0, (s.hp / s.maxHp) * 100);
 
   return (
+    <UiShell>
     <div className="pointer-events-none absolute inset-0 select-none">
       <div className="absolute left-4 top-4 w-64">
         <div className="mb-1 flex justify-between text-[10px] uppercase tracking-widest text-bone/40">
@@ -76,6 +84,7 @@ export function Hud() {
       {s.mode === "paused" && <PauseOverlay />}
       {(s.over || s.won) && <EndOverlay won={s.won} kills={s.kills} seed={s.seed} />}
     </div>
+    </UiShell>
   );
 }
 

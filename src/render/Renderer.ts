@@ -23,7 +23,7 @@ import { ViewRegistry } from "./viewRegistry.ts";
 import { Particles } from "./particles.ts";
 import { Tweens } from "./tweens.ts";
 import { RoomView } from "./roomView.ts";
-import { shakeOffset } from "./camera.ts";
+import { shakeOffset, uiScale } from "./camera.ts";
 import { Nameplates } from "./nameplates.ts";
 import { BossBar } from "./bossBar.ts";
 import { DamageNumbers } from "./damageNumbers.ts";
@@ -167,11 +167,13 @@ export class Renderer {
     return 0;
   }
 
-  render(alpha: number, camX: number, camY: number, trauma: number, dt: number): void {
+  render(alpha: number, camX: number, camY: number, trauma: number, dt: number, zoom = 1): void {
     const shake = shakeOffset(trauma);
-    // 像素风：摄像机取整，避免整屏亚像素抖动（实体本身的插值保留）
-    this.root.x = Math.round(-camX + shake.x);
-    this.root.y = Math.round(-camY + shake.y);
+    const ui = uiScale(this.app.screen.height);
+    // 像素风：整数缩放 + 摄像机取整，避免整屏亚像素抖动（实体本身的插值保留）
+    this.root.scale.set(zoom);
+    this.root.x = Math.round(-camX * zoom + shake.x);
+    this.root.y = Math.round(-camY * zoom + shake.y);
 
     const k = alpha < 0 ? 0 : alpha > 1 ? 1 : alpha;
 
@@ -226,13 +228,12 @@ export class Renderer {
     };
     this.weapon.sync(this.world, dt);
     this.plates.sync(this.world, posOf);
-    this.bossBar.sync(this.world, this.app.screen.width, this.app.screen.height, dt);
+    this.bossBar.sync(this.world, this.app.screen.width, this.app.screen.height, dt, ui);
 
     // 暂停时飘字停在原地，不继续漂
     if (hud.get().mode === "playing") this.damage.update(dt);
     this.tweens.update(dt);
     this.particles.update(dt);
-    this.particles.draw();
 
     const room = this.world.resource<RoomCtx>(ROOM);
     if (room.node) this.room.renderDoors(room.node as RoomNode, room.cleared);
@@ -240,8 +241,9 @@ export class Renderer {
     this.msgTimer = Math.max(0, this.msgTimer - dt);
     // 暂停/菜单时不在画面上留游戏提示
     this.msg.visible = this.msgTimer > 0 && hud.get().mode === "playing";
+    this.msg.scale.set(ui);
     this.msg.x = this.app.screen.width / 2;
-    this.msg.y = 28;
+    this.msg.y = 28 * ui;
   }
 
   destroy(): void {

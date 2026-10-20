@@ -10,7 +10,7 @@ type Item = {
 };
 
 const POOL_MAX = 64;
-const BASE_FONT = 20;
+const BASE_FONT = 15;
 
 /**
  * 伤害飘字。
@@ -35,7 +35,7 @@ export class DamageNumbers {
     item.text.position.set(x + (Math.random() - 0.5) * 30, y + (Math.random() - 0.5) * 10);
     item.text.alpha = 1;
     item.text.visible = true;
-    item.text.scale.set(scale * 1.35);
+    item.text.scale.set(scale);
     item.scaleFrom = scale;
     item.life = 0.75;
     item.total = 0.75;
@@ -56,7 +56,7 @@ export class DamageNumbers {
       item.vy += 150 * dt;
 
       const t = 1 - item.life / item.total;
-      item.text.scale.set(item.scaleFrom * (1.35 - 0.35 * Math.min(1, t * 5)));
+      item.text.scale.set(item.scaleFrom * (1.3 - 0.3 * Math.min(1, t * 5)));
       item.text.alpha = item.life < 0.28 ? item.life / 0.28 : 1;
     }
   }
