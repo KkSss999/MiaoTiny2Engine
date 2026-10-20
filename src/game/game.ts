@@ -22,6 +22,9 @@ import { projectilesSystem } from "./systems/projectiles.ts";
 import { enemiesSystem } from "./systems/enemies.ts";
 import { roomFlowSystem } from "./systems/roomFlow.ts";
 import { hudSyncSystem } from "./systems/hudSync.ts";
+import { skillsSystem } from "./systems/skills.ts";
+import { statusSystem } from "./systems/status.ts";
+import { installDamageRules } from "./damage.ts";
 import { RoomCleared, RoomEntered } from "./events.ts";
 import { WorldManager } from "./world/WorldManager.ts";
 import { spawnBullet, spawnEnemy, spawnPlayer } from "./entities/factory.ts";
@@ -140,10 +143,14 @@ export class Game {
       this.say(event.type === "boss" ? "BOSS：失控工业傀儡" : `${LABEL[event.type as RoomNode["type"]]}房`, 1.8);
     });
 
+    installDamageRules(w);
+
     this.schedule
       .add("playerControl", (world, ctx) => playerControlSystem(world, ctx.dt), { phase: 0 })
+      .add("skills", (world, ctx) => skillsSystem(world, ctx.dt), { phase: 5 })
       .add("projectiles", (world, ctx) => projectilesSystem(world, ctx.dt), { phase: 10 })
       .add("enemies", (world, ctx) => enemiesSystem(world, ctx.dt), { phase: 20 })
+      .add("status", (world, ctx) => statusSystem(world, ctx.dt), { phase: 25 })
       .add("roomFlow", (world) => roomFlowSystem(world), { phase: 30 })
       .add("hudSync", (world) => hudSyncSystem(world, () => this.manager?.visited ?? 0), { phase: 40 });
   }

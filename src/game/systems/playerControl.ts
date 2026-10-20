@@ -1,12 +1,16 @@
-import type { Entity, World } from "@core/ecs/index.ts";
+import type { World } from "@core/ecs/index.ts";
 import { fire, is, step } from "@core/fsm/index.ts";
-import { Aim, Brain, Circle, EnemyTag, PlayerTag, Position } from "../components.ts";
-import { clamp, damageEnemy, effects, moveWithWalls, playerEntity, roomCtx, runCtx } from "../combat.ts";
+import { Aim, Brain, EnemyTag, PlayerTag, Position } from "../components.ts";
+import { clamp, effects, moveWithWalls, playerEntity, roomCtx, runCtx } from "../combat.ts";
 import { input } from "../input.ts";
 import { DEBUG, VIEW, type DebugCtx, type ViewCtx } from "../resources.ts";
 import { ROOM_H, ROOM_W } from "../rooms.ts";
 import { PLAYER_FSM, type PlayerCtx } from "../ai/playerAi.ts";
 
+/**
+ * 玩家移动 / 瞄准 / 开火。
+ * 主动技能不在这里 —— 走 skillsSystem + 技能表。
+ */
 export function playerControlSystem(w: World, dt: number): void {
   const pe = playerEntity(w);
   if (pe === undefined) return;
@@ -21,7 +25,6 @@ export function playerControlSystem(w: World, dt: number): void {
   pt.invuln = Math.max(0, pt.invuln - dt);
   pt.fireCd = Math.max(0, pt.fireCd - dt);
   pt.dashCd = Math.max(0, pt.dashCd - dt);
-  pt.eCd = Math.max(0, pt.eCd - dt);
   pt.heat = clamp(pt.heat - dt * 18, 0, 100);
   if (pt.overheated && pt.heat < 40) pt.overheated = false;
 
@@ -103,33 +106,5 @@ export function playerControlSystem(w: World, dt: number): void {
       r: 4,
     });
     run.trauma = clamp(run.trauma + 0.05, 0, 1);
-  }
-
-  if (input.consume("KeyE") && pt.eCd <= 0) {
-    if (pt.race === "human") {
-      if (pt.overheated || pt.heat + 30 > 100) {
-        pt.overheated = true;
-      } else {
-        pt.eCd = 1.1;
-        pt.heat += 30;
-        run.trauma = clamp(run.trauma + 0.35, 0, 1);
-        const hits: Entity[] = [];
-        w.query(Position, Circle, EnemyTag).forEach((e, ep, ec) => {
-          if (Math.hypot(ep.x - pos.x, ep.y - pos.y) < 150 + ec.r) hits.push(e);
-        });
-        for (const e of hits) {
-          const ep = w.get(e, Position);
-          if (ep) effects(w).push({ type: "bullet", x: ep.x, y: ep.y, angle: Math.random() * 6.28, speed: 200, dmg: 6, friendly: true, color: 0x39e0c8, r: 3 });
-          damageEnemy(w, e, 34);
-        }
-      }
-    } else if (pt.souls >= 25) {
-      pt.souls -= 25;
-      pt.eCd = 0.6;
-      for (let i = -1; i <= 1; i++) {
-        effects(w).push({ type: "bullet", x: pos.x, y: pos.y, angle: angle + i * 0.18, speed: 520, dmg: 22, friendly: true, color: 0x39e0c8, r: 7 });
-      }
-      run.trauma = clamp(run.trauma + 0.18, 0, 1);
-    }
   }
 }

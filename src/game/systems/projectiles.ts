@@ -1,6 +1,6 @@
 import type { Entity, World } from "@core/ecs/index.ts";
 import { BulletTag, Circle, EnemyTag, Health, PlayerTag, Position, PropTag, Velocity } from "../components.ts";
-import { damageEnemy, damagePlayer, explode, hitsWall, roomCtx } from "../combat.ts";
+import { damageEnemy, damagePlayer, explode, hitsWall, playerEntity, roomCtx } from "../combat.ts";
 
 export function projectilesSystem(w: World, dt: number): void {
   const room = roomCtx(w);
@@ -25,7 +25,7 @@ export function projectilesSystem(w: World, dt: number): void {
         const tp = w.require(target, Position);
         const tc = w.require(target, Circle);
         if (Math.hypot(tp.x - pos.x, tp.y - pos.y) < tc.r + circle.r) {
-          damageEnemy(w, target, tag.dmg);
+          damageEnemy(w, target, tag.dmg, playerEntity(w) ?? null);
           w.commands.despawn(e);
           return;
         }

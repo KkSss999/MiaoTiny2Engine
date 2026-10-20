@@ -21,8 +21,14 @@ export function Hud() {
             {s.roomType} {s.room}/{s.rooms}
           </span>
         </div>
-        <div className="mb-2 h-2 w-full overflow-hidden rounded-full bg-rust/20">
+        <div className="mb-1 h-2 w-full overflow-hidden rounded-full bg-rust/20">
           <div className={bar + " bg-blood"} style={{ width: hpPct + "%" }} />
+        </div>
+        <div className="mb-2 flex items-center gap-2">
+          <span className="w-10 text-[10px] tracking-widest text-brass/70">LV {s.level}</span>
+          <div className="h-1 flex-1 overflow-hidden rounded-full bg-white/10">
+            <div className="h-full rounded-full bg-brass/60 transition-all duration-150" style={{ width: (s.xp / s.xpNext) * 100 + "%" }} />
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <span className="w-8 text-[10px] text-bone/40">{s.race === "human" ? "HEAT" : "SOUL"}</span>
@@ -37,6 +43,11 @@ export function Hud() {
           {Array.from({ length: s.maxDashes }).map((_, i) => (
             <div key={i} className={"h-1 w-6 rounded-full " + (i < s.dashes ? "bg-bone" : "bg-bone/15")} />
           ))}
+        </div>
+        <div className="mt-3 flex items-center gap-2 text-[10px]">
+          <span className={"border px-1 " + (s.skillCd <= 0 ? "border-soul/60 text-soul" : "border-bone/15 text-bone/25")}>E</span>
+          <span className={s.skillCd <= 0 ? "text-bone/70" : "text-bone/30"}>{s.skillName}</span>
+          {s.skillCd > 0 && <span className="text-bone/25">{s.skillCd.toFixed(1)}s</span>}
         </div>
       </div>
 

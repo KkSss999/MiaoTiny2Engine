@@ -1,10 +1,12 @@
 import type { World } from "@core/ecs/index.ts";
 import type { Floor, RoomNode } from "./gen/floor.ts";
-import { BulletTag, EnemyTag, Health, PlayerTag, Position, SpriteRef } from "./components.ts";
+import { BulletTag, EnemyTag, Health, Level, PlayerTag, Position, SpriteRef } from "./components.ts";
 import { DEBUG, type DebugCtx } from "./resources.ts";
 import { playerEntity, roomCtx, runCtx } from "./combat.ts";
 import { input } from "./input.ts";
 import { hud } from "./store.ts";
+import { applyStatus } from "./status.ts";
+import { grantXp } from "./damage.ts";
 
 export type DebugDeps = {
   world: World;
@@ -30,7 +32,14 @@ export function installDebugHooks(deps: DebugDeps): void {
       const pos = pe === undefined ? null : w.get(pe, Position);
       const hp = pe === undefined ? 0 : (w.get(pe, Health)?.hp ?? 0);
       let enemies = 0;
-      for (const e of w.query(EnemyTag, Health).collect()) if ((w.get(e, Health)?.hp ?? 0) > 0) enemies++;
+      const enemyHp: number[] = [];
+      for (const e of w.query(EnemyTag, Health).collect()) {
+        const hp2 = w.get(e, Health)?.hp ?? 0;
+        if (hp2 > 0) {
+          enemies++;
+          enemyHp.push(Math.round(hp2));
+        }
+      }
       const counters = deps.counters();
       return {
         mode: hud.get().mode,
@@ -41,9 +50,12 @@ export function installDebugHooks(deps: DebugDeps): void {
         visited: deps.visited(),
         cleared: room.cleared,
         kills: run.kills,
+        level: pe === undefined ? 1 : (w.get(pe, Level)?.level ?? 1),
+        xp: pe === undefined ? 0 : (w.get(pe, Level)?.xp ?? 0),
         over: run.over,
         won: run.won,
         enemies,
+        enemyHp,
         bullets: w.query(BulletTag).count,
         auto: w.resource<DebugCtx>(DEBUG).autoAim,
         down: input.down,
@@ -85,6 +97,14 @@ export function installDebugHooks(deps: DebugDeps): void {
         const hp = w.get(pe, Health);
         if (hp) hp.hp = 9999;
       }
+    },
+    status: (id: string) => {
+      const target = w.query(EnemyTag, Health).collect().find((e) => (w.get(e, Health)?.hp ?? 0) > 0);
+      if (target !== undefined) applyStatus(w, target, id);
+    },
+    xp: (n: number) => {
+      const pe = playerEntity(w);
+      if (pe !== undefined) grantXp(w, pe, n);
     },
     gotoRoom: (id: string) => {
       const floor = deps.floor();

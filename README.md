@@ -73,12 +73,15 @@ app 侧用 `@core/xxx/index.ts` 引用；core 内部一律相对路径，所以�
 src/game/              游戏层
   components.ts         纯数据组件（Position/Velocity/Health/PlayerTag/...）
   resources.ts          单例：RoomCtx / RunCtx / ViewCtx / DebugCtx
-  combat.ts             伤害、爆炸、墙体碰撞（纯函数，无 pixi）
+  damage.ts             伤害管线：修饰 → 扣血 → 落地事件 → 死亡/升级
+  status.ts             状态效果（燃烧/冰冻/诅咒）：施加、倍率查询
+  skills.ts             技能表：冷却/消耗 + 施法实现
+  combat.ts             碰撞、爆炸、玩家/敌人受伤入口（无 pixi）
   effects.ts            系统不造实体，只投递“要生成什么”
   world/WorldManager.ts 楼层协调器（不留资源，只用 run 的 Lifetime 装房间作用域）
   entities/factory.ts   实体构造（玩家/敌人/子弹/道具）
   ai/                   行为状态机定义（敌人三套 + 玩家动作）
-  systems/              playerControl → projectiles → enemies → roomFlow → hudSync
+  systems/              playerControl → skills → projectiles → enemies → status → roomFlow → hudSync
   core/Loop.ts          固定步长时钟（纯逻辑，喂 deltaMs 出 steps/alpha）
   core/Loop.test.ts     步数 / 插值 / 追帧上限 / 夹取
   debug.ts              window.__dbg 调试钩子（与生产代码分离）

@@ -3,6 +3,7 @@ import { step } from "@core/fsm/index.ts";
 import { Brain, Circle, EnemyTag, Health, Position } from "../components.ts";
 import { damagePlayer, effects, moveWithWalls, playerEntity, roomCtx } from "../combat.ts";
 import { ENEMY_AI, type EnemyCtx } from "../ai/enemyAi.ts";
+import { speedMul } from "../status.ts";
 import { ROOM_H, ROOM_W } from "../rooms.ts";
 
 const clamp = (v: number, a: number, b: number) => (v < a ? a : v > b ? b : v);
@@ -14,7 +15,7 @@ export function enemiesSystem(w: World, dt: number): void {
   const ppos = w.require(pe, Position);
   const pcircle = w.require(pe, Circle);
 
-  w.query(Position, Circle, Health, EnemyTag, Brain).forEach((_e, pos, circle, hp, tag, brain) => {
+  w.query(Position, Circle, Health, EnemyTag, Brain).forEach((e, pos, circle, hp, tag, brain) => {
     if (hp.hp <= 0) return;
 
     tag.flash = Math.max(0, tag.flash - dt);
@@ -31,7 +32,7 @@ export function enemiesSystem(w: World, dt: number): void {
       dist,
       radius: circle.r,
       playerRadius: pcircle.r,
-      speed: tag.speed,
+      speed: tag.speed * speedMul(w, e),
       cd: tag.cd,
       move: (ux, uy) => moveWithWalls(room.walls, pos, circle.r, ux * tag.speed * dt, uy * tag.speed * dt),
       charge: (ux, uy) => moveWithWalls(room.walls, pos, circle.r, ux * 620 * dt, uy * 620 * dt),

@@ -14,6 +14,12 @@ export type HudState = {
   roomType: string;
   seed: number;
   kills: number;
+  level: number;
+  xp: number;
+  xpNext: number;
+  skillName: string;
+  skillCd: number;
+  skillCdMax: number;
   over: boolean;
   won: boolean;
   message: string;
@@ -33,6 +39,12 @@ let state: HudState = {
   roomType: "start",
   seed: 1,
   kills: 0,
+  level: 1,
+  xp: 0,
+  xpNext: 20,
+  skillName: "",
+  skillCd: 0,
+  skillCdMax: 1,
   over: false,
   won: false,
   message: "",

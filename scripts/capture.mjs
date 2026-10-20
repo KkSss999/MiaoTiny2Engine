@@ -54,6 +54,7 @@ for (let i = 0; i < 60; i++) {
 }
 if (auto) await evalJs("window.__dbg.auto(true)");
 if (process.argv.includes("--god")) await evalJs("window.__dbg.god()");
+const statusId = process.argv.find((a) => a.startsWith("--status="))?.split("=")[1];
 if (process.argv.includes("--boss")) {
   await evalJs("window.__dbg.gotoRoom(window.__dbg.state().bossId)");
 }
@@ -66,6 +67,7 @@ if (tp) {
 }
 const walkKey = process.argv.find((a) => a.startsWith("--walk="))?.split("=")[1];
 if (walkKey) await evalJs(`window.__dbg.walk('${walkKey}')`);
+if (statusId) await evalJs(`window.__dbg.status('${statusId}')`);
 await sleep(waitMs);
 for (const arg of process.argv.filter((a) => a.startsWith("--key="))) {
   const code = arg.slice("--key=".length);

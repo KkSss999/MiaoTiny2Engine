@@ -29,7 +29,6 @@ export const PlayerTag = defineComponent("PlayerTag", () => ({
   invuln: 0,
   heat: 0,
   souls: 0,
-  eCd: 0,
   overheated: false,
   revived: false,
 }));
@@ -76,3 +75,40 @@ export const SpriteRef = defineComponent("SpriteRef", () => ({
   /** 出现时是否播弹出动画（表现层读取） */
   popIn: false,
 }));
+/** 状态效果：燃烧 / 冰冻 / 诅咒…… 一个组件装全部实例 */
+export type StatusInstance = { id: string; time: number; tick: number; magnitude: number };
+
+export const Statuses = defineComponent(
+  "Statuses",
+  () => ({ list: [] as StatusInstance[] }),
+  defineShape("Statuses", {
+    list: s.array(
+      s.object({
+        id: s.string(),
+        time: s.number(),
+        tick: s.number(),
+        magnitude: s.number().min(0),
+      }),
+    ),
+  }),
+);
+
+export const Level = defineComponent(
+  "Level",
+  () => ({ level: 1, xp: 0, next: 20 }),
+  defineShape("Level", {
+    level: s.number().int().min(1),
+    xp: s.number().min(0),
+    next: s.number().int().min(1),
+  }),
+);
+
+export type SkillSlot = { id: string; cd: number };
+
+export const Skills = defineComponent(
+  "Skills",
+  () => ({ list: [] as SkillSlot[] }),
+  defineShape("Skills", {
+    list: s.array(s.object({ id: s.string(), cd: s.number().min(0) })),
+  }),
+);

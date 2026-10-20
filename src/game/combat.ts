@@ -1,8 +1,12 @@
 import type { Entity, World } from "@core/ecs/index.ts";
-import { Circle, Health, PlayerTag, EnemyTag, Position } from "./components.ts";
-import { EFFECTS, ROOM, RUN, type RoomCtx, type RunCtx } from "./resources.ts";
+import { Circle, EnemyTag, Health, PlayerTag, Position } from "./components.ts";
+import { EFFECTS } from "./resources.ts";
 import type { EffectQueue } from "./effects.ts";
-import { EntityKilled, PlayerDamaged } from "./events.ts";
+import { dealDamage } from "./damage.ts";
+import { PlayerDamaged } from "./events.ts";
+import { playerEntity, roomCtx, runCtx } from "./query.ts";
+
+export { playerEntity, roomCtx, runCtx };
 
 export const clamp = (v: number, a: number, b: number) => (v < a ? a : v > b ? b : v);
 
@@ -28,8 +32,6 @@ export function moveWithWalls(
   if (dy !== 0 && !hitsWall(walls, pos.x, pos.y + dy, r)) pos.y += dy;
 }
 
-export const runCtx = (w: World) => w.resource<RunCtx>(RUN);
-export const roomCtx = (w: World) => w.resource<RoomCtx>(ROOM);
 export const effects = (w: World) => w.resource<EffectQueue>(EFFECTS);
 
 export const shake = (w: World, amount: number) => {
@@ -37,57 +39,33 @@ export const shake = (w: World, amount: number) => {
   run.trauma = clamp(run.trauma + amount, 0, 1);
 };
 
-export function playerEntity(w: World): Entity | undefined {
-  const list = w.query(PlayerTag).collect();
-  return list[0];
-}
-
-export function damageEnemy(w: World, e: Entity, dmg: number): void {
-  const hp = w.get(e, Health);
+/** 对敌人造成伤害：负责表现（闪白/震屏/顿帧），数值走统一管线 */
+export function damageEnemy(w: World, target: Entity, amount: number, source: Entity | null = null): void {
+  const hp = w.get(target, Health);
   if (!hp || hp.hp <= 0) return;
-  hp.hp -= dmg;
-  const tag = w.get(e, EnemyTag);
+  const tag = w.get(target, EnemyTag);
   if (tag) tag.flash = 0.09;
   shake(w, 0.04);
   const run = runCtx(w);
   run.freeze = Math.max(run.freeze, 0.022);
-  if (hp.hp <= 0) {
-    run.kills++;
-    w.bus.emit(EntityKilled, { entity: e, byPlayer: true });
-    const pe = playerEntity(w);
-    if (pe !== undefined) {
-      const pt = w.get(pe, PlayerTag);
-      if (pt && pt.race === "undead") pt.souls = Math.min(100, pt.souls + 8);
-    }
-    w.commands.despawn(e);
-  }
+  dealDamage(w, { source, target, amount, kind: "bullet", tags: [] });
 }
 
+/** 对玩家造成伤害：无敌帧、受击反馈在这里，数值同样走管线 */
 export function damagePlayer(w: World, amount: number): void {
   const run = runCtx(w);
   if (run.over) return;
-  const pe = playerEntity(w);
-  if (pe === undefined) return;
-  const pt = w.get(pe, PlayerTag);
-  const hp = w.get(pe, Health);
+  const player = playerEntity(w);
+  if (player === undefined) return;
+  const pt = w.get(player, PlayerTag);
+  const hp = w.get(player, Health);
   if (!pt || !hp || pt.invuln > 0) return;
 
-  hp.hp -= amount;
   pt.invuln = 0.45;
   shake(w, 0.3);
   run.freeze = 0.05;
-  w.bus.emit(PlayerDamaged, { amount, hp: hp.hp });
-  if (hp.hp <= 0) {
-    if (pt.race === "undead" && !pt.revived) {
-      pt.revived = true;
-      hp.hp = hp.max * 0.5;
-      pt.souls = 0;
-      pt.invuln = 1.6;
-      return;
-    }
-    hp.hp = 0;
-    run.over = true;
-  }
+  w.bus.emit(PlayerDamaged, { amount, hp: hp.hp - amount });
+  dealDamage(w, { source: null, target: player, amount, kind: "contact", tags: [] });
 }
 
 export function explode(w: World, x: number, y: number, radius: number, dmg: number): void {
