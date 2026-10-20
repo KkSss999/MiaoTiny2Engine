@@ -5,6 +5,7 @@ export type SpriteId =
   | "player.undead"
   | "enemy.melee"
   | "enemy.turret"
+  | "enemy.charger"
   | "enemy.boss"
   | "prop.barrel"
   | "prop.crystal"
@@ -50,6 +51,13 @@ export const SPRITES: Record<SpriteId, SpriteAsset> = {
     key: "enemy.turret",
     draw: (g) => {
       g.circle(0, 0, 18).fill(0x24313f).stroke({ width: 3, color: 0xc9a227 });
+    },
+  },
+  "enemy.charger": {
+    key: "enemy.charger",
+    draw: (g) => {
+      g.poly([0, -20, 18, 0, 0, 20, -18, 0]).fill(0x3a2418).stroke({ width: 3, color: 0xffa000 });
+      g.circle(0, 0, 6).fill(0xffa000);
     },
   },
   "enemy.boss": {

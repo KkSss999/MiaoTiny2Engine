@@ -2,11 +2,10 @@ import type { Entity, EntityScope, World } from "@core/ecs/index.ts";
 import { createMachine } from "@core/fsm/index.ts";
 import type { Race } from "../api.ts";
 import type { WeaponSlot } from "../components.ts";
-import { allAffixes, getWeapon } from "../content.ts";
+import { allAffixes, getEnemy, getWeapon } from "../content.ts";
 import type { Effect } from "../effects.ts";
-import type { EnemyKind } from "../rooms.ts";
 import { ROOM_H } from "../rooms.ts";
-import { ENEMY_AI } from "../ai/enemyAi.ts";
+import { ENEMY_BEHAVIORS } from "../ai/enemyAi.ts";
 import { STARTING_SKILLS } from "../skills.ts";
 import { STARTING_IMPLANTS, applyImplants } from "../implants.ts";
 import { PLAYER_FSM } from "../ai/playerAi.ts";
@@ -54,23 +53,20 @@ export function spawnPlayer(world: World, race: Race): Entity {
   return e;
 }
 
-export function spawnEnemy(world: World, scope: EntityScope, kind: EnemyKind, x: number, y: number): Entity {
-  const base = kind === "boss"
-    ? { hp: 900, r: 60, speed: 70 }
-    : kind === "turret"
-      ? { hp: 60, r: 18, speed: 0 }
-      : { hp: 45, r: 16, speed: 118 };
+export function spawnEnemy(world: World, scope: EntityScope, typeId: string, x: number, y: number): Entity {
+  const def = getEnemy(typeId) ?? getEnemy("melee");
+  if (!def) throw new Error(`未知敌人原型：${typeId}`);
 
   const e = scope.spawn(Position);
   world.add(e, Position, { x, y });
-  world.add(e, Circle, { r: base.r });
-  world.add(e, Health, { hp: base.hp, max: base.hp });
-  world.add(e, EnemyTag, { kind, speed: base.speed, cd: rnd(0.4, 1.4), flash: 0 });
+  world.add(e, Circle, { r: def.radius });
+  world.add(e, Health, { hp: def.hp, max: def.hp });
+  world.add(e, EnemyTag, { typeId: def.id, speed: def.speed, cd: rnd(0.4, 1.4), flash: 0 });
   world.add(e, Statuses);
-  const brain = ENEMY_AI[kind];
-  if (brain) world.add(e, Brain, createMachine(brain));
+  const machine = ENEMY_BEHAVIORS[def.behavior] ?? ENEMY_BEHAVIORS.chaser;
+  world.add(e, Brain, createMachine(machine));
   world.add(e, SpriteRef, {
-    spriteId: kind === "boss" ? "enemy.boss" : kind === "turret" ? "enemy.turret" : "enemy.melee",
+    spriteId: def.sprite,
     layer: "actor",
     rotation: "none",
     scale: 1,

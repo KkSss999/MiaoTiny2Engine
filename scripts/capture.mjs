@@ -70,6 +70,8 @@ if (tp) {
   const [x, y] = tp.split(",").map(Number);
   await evalJs(`window.__dbg.teleport(${x}, ${y})`);
 }
+const spawnId = process.argv.find((a) => a.startsWith("--spawn="))?.split("=")[1];
+if (spawnId) await evalJs(`window.__dbg.spawn('${spawnId}')`);
 const walkKey = process.argv.find((a) => a.startsWith("--walk="))?.split("=")[1];
 if (walkKey) await evalJs(`window.__dbg.walk('${walkKey}')`);
 if (statusId) await evalJs(`window.__dbg.status('${statusId}')`);

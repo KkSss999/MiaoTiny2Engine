@@ -3,6 +3,7 @@ import { defineEvent } from "@core/event/index.ts";
 import { EnemyTag, Health, Implants, Level, PlayerTag } from "./components.ts";
 import { damageTakenMul } from "./status.ts";
 import { runCtx } from "./query.ts";
+import { getEnemy } from "./content.ts";
 
 export type DamageKind = "bullet" | "melee" | "explosion" | "dot" | "contact";
 
@@ -19,8 +20,6 @@ export const DamageIncoming = defineEvent<DamagePacket>("game:DamageIncoming");
 /** 伤害已扣血：词条、特效、吸血、连锁都挂这里 */
 export const DamageLanded = defineEvent<{ packet: DamagePacket; applied: number }>("game:DamageLanded");
 export const LeveledUp = defineEvent<{ entity: Entity; level: number }>("game:LeveledUp");
-
-const XP_BY_KIND: Record<string, number> = { melee: 6, turret: 8, boss: 60 };
 
 /**
  * 全游戏唯一的伤害入口。
@@ -53,7 +52,7 @@ function onDeath(world: World, packet: DamagePacket): void {
     return;
   }
 
-  const kind = world.get(target, EnemyTag)?.kind ?? "melee";
+  const typeId = world.get(target, EnemyTag)?.typeId ?? "melee";
   runCtx(world).kills += 1;
   const source = packet.source;
   const byPlayer = source !== null && world.has(source, PlayerTag);
@@ -61,7 +60,7 @@ function onDeath(world: World, packet: DamagePacket): void {
   world.bus.emit(EntityKilledRef, { entity: target, byPlayer });
 
   if (byPlayer && source !== null) {
-    grantXp(world, source, XP_BY_KIND[kind] ?? 6);
+    grantXp(world, source, getEnemy(typeId)?.xp ?? 6);
     const pt = world.get(source, PlayerTag);
     if (pt?.race === "undead") pt.souls = Math.min(100, pt.souls + 8);
   }

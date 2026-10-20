@@ -1,5 +1,10 @@
 import type { MachineDef } from "@core/fsm/index.ts";
+import type { EnemyDef } from "../content.ts";
 
+/**
+ * 敌人行为上下文：所有数值都来自原型表，
+ * 行为本身只描述"什么时候做什么"，不含魔数。
+ */
 export type EnemyCtx = {
   dt: number;
   dx: number;
@@ -9,9 +14,8 @@ export type EnemyCtx = {
   playerRadius: number;
   speed: number;
   cd: number;
-  /** 沿单位方向按自身速度移动 */
+  def: EnemyDef;
   move: (ux: number, uy: number) => void;
-  /** 沿单位方向高速冲刺 */
   charge: (ux: number, uy: number) => void;
   shoot: (angle: number, speed: number, dmg: number) => void;
   hitPlayer: (dmg: number) => void;
@@ -19,63 +23,91 @@ export type EnemyCtx = {
   setCd: (seconds: number) => void;
 };
 
-const towardX = (c: EnemyCtx) => c.dx / c.dist;
-const towardY = (c: EnemyCtx) => c.dy / c.dist;
+const ux = (c: EnemyCtx) => c.dx / c.dist;
+const uy = (c: EnemyCtx) => c.dy / c.dist;
+const touching = (c: EnemyCtx) => c.dist < c.radius + c.playerRadius + 2;
 
+/** 只会追着你打 */
+const CHASER: MachineDef<EnemyCtx, string> = {
+  id: "chaser",
+  initial: "chase",
+  states: {
+    chase: {
+      update: (c) => {
+        c.move(ux(c), uy(c));
+        if (touching(c)) c.hitPlayer(c.def.damage);
+      },
+    },
+  },
+};
+
+/** 站桩射击 */
 const TURRET: MachineDef<EnemyCtx, string> = {
   id: "turret",
   initial: "aim",
   states: {
     aim: {
       update: (c) => {
-        if (c.cd <= 0 && c.dist < 900) {
-          c.setCd(1.7);
-          c.shoot(Math.atan2(c.dy, c.dx), 380, 8);
-        }
+        if (c.cd > 0 || c.dist > c.def.projectileRange) return;
+        c.setCd(c.def.projectileInterval);
+        c.shoot(Math.atan2(c.dy, c.dx), c.def.projectileSpeed, c.def.projectileDamage);
       },
     },
   },
 };
 
-const MELEE: MachineDef<EnemyCtx, string> = {
-  id: "melee",
+/** 追一段，冲一下 */
+const CHARGER: MachineDef<EnemyCtx, string> = {
+  id: "charger",
   initial: "chase",
   states: {
     chase: {
       update: (c) => {
-        c.move(towardX(c), towardY(c));
-        if (c.dist < c.radius + c.playerRadius + 2) c.hitPlayer(9);
+        c.move(ux(c), uy(c));
+        if (touching(c)) c.hitPlayer(c.def.damage);
       },
+      transitions: [{ when: (c) => c.cd <= 0 && c.def.chargeSpeed > 0, to: "charge" }],
+    },
+    charge: {
+      minTime: 0.2,
+      enter: (c) => c.setCd(c.def.chargeInterval),
+      update: (c) => {
+        c.charge(ux(c), uy(c));
+        if (touching(c)) c.hitPlayer(c.def.chargeDamage);
+      },
+      transitions: [{ after: 0.4, to: "chase" }],
     },
   },
 };
 
+/** Boss：追 + 冲撞 + 召唤 */
 const BOSS: MachineDef<EnemyCtx, string> = {
   id: "boss",
   initial: "chase",
   states: {
     chase: {
-      update: (c) => c.move(towardX(c), towardY(c)),
+      update: (c) => c.move(ux(c), uy(c)),
       transitions: [{ when: (c) => c.cd <= 0, to: "charge" }],
     },
     charge: {
       minTime: 0.45,
       enter: (c) => {
-        c.setCd(3.2);
-        c.spawnAdd();
-        c.spawnAdd();
+        c.setCd(c.def.chargeInterval);
+        for (let i = 0; i < c.def.summonCount; i++) c.spawnAdd();
       },
       update: (c) => {
-        c.charge(towardX(c), towardY(c));
-        if (c.dist < c.radius + c.playerRadius) c.hitPlayer(16);
+        c.charge(ux(c), uy(c));
+        if (touching(c)) c.hitPlayer(c.def.chargeDamage);
       },
       transitions: [{ after: 0.45, to: "chase" }],
     },
   },
 };
 
-export const ENEMY_AI: Record<string, MachineDef<EnemyCtx, string>> = {
-  melee: MELEE,
+/** 行为注册表：加一种行为 = 加一个状态机；加一个怪 = 在表里写一行 */
+export const ENEMY_BEHAVIORS: Record<string, MachineDef<EnemyCtx, string>> = {
+  chaser: CHASER,
   turret: TURRET,
+  charger: CHARGER,
   boss: BOSS,
 };

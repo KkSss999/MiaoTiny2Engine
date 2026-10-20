@@ -17,6 +17,7 @@ export type DebugDeps = {
   counters: () => { clearedEvents: number; transitions: number };
   gotoRoom: (id: string) => void;
   openReward: () => void;
+  spawn: (typeId: string) => void;
   drop: (weaponId: string, affixId: string) => void;
 };
 
@@ -114,6 +115,9 @@ export function installDebugHooks(deps: DebugDeps): void {
     },
     drop: (weaponId: string, affixId: string) => {
       deps.drop(weaponId, affixId);
+    },
+    spawn: (typeId: string) => {
+      deps.spawn(typeId);
     },
     reward: () => {
       deps.openReward();

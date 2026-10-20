@@ -107,6 +107,13 @@ export class Game {
         const floor = this.manager?.floor;
         if (floor?.nodes.some((n) => n.id === id)) this.manager?.enter(id, null);
       },
+      spawn: (typeId: string) => {
+        const scope = this.manager?.roomScope;
+        const player = playerEntity(this.world);
+        if (!scope || player === undefined) return;
+        const pos = this.world.get(player, Position);
+        if (pos) spawnEnemy(this.world, scope, typeId, pos.x + 200, pos.y);
+      },
       openReward: () => {
         this.openReward();
       },
@@ -335,7 +342,7 @@ export class Game {
       if (eff.type === "bullet") {
         if (scope) spawnBullet(w, scope, eff);
       } else if (eff.type === "enemy") {
-        if (scope) spawnEnemy(w, scope, eff.kind, eff.x, eff.y);
+        if (scope) spawnEnemy(w, scope, eff.typeId, eff.x, eff.y);
       } else if (eff.type === "burst") {
         this.renderer.emitParticles(eff.x, eff.y, eff.count, eff.color, eff.speed ?? 180);
       } else if (eff.type === "totem") {

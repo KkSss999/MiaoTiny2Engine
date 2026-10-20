@@ -1,6 +1,5 @@
 import { defineComponent } from "@core/ecs/index.ts";
 import { defineShape, s } from "@core/db/index.ts";
-import type { EnemyKind } from "./rooms";
 import type { Race } from "./api";
 import type { Layer } from "./layers";
 import type { MachineData } from "@core/fsm/index.ts";
@@ -36,7 +35,8 @@ export const PlayerTag = defineComponent("PlayerTag", () => ({
 export const Aim = defineComponent("Aim", () => ({ angle: 0 }));
 
 export const EnemyTag = defineComponent("EnemyTag", () => ({
-  kind: "melee" as EnemyKind,
+  /** 指向 enemies 表的原型 id */
+  typeId: "melee",
   speed: 0,
   cd: 0,
   flash: 0,

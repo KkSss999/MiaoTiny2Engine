@@ -44,6 +44,13 @@ const WEAPONS = [
   { id: "watch", name: "诅咒怀表", behavior: "lob", damage: 24, cooldown: 1.0, pellets: 1, spread: 0, speed: 380, range: 300, knockback: 0, color: 0xb4552d, size: 6 },
 ];
 
+const ENEMIES = [
+  { id: "melee", name: "锈蚀者", sprite: "enemy.melee", hp: 45, radius: 16, speed: 118, damage: 9, behavior: "chaser", xp: 6 },
+  { id: "charger", name: "冲撞傀儡", sprite: "enemy.charger", hp: 70, radius: 20, speed: 85, damage: 12, behavior: "charger", xp: 10, chargeSpeed: 560, chargeDamage: 18, chargeInterval: 2.6, chargeDuration: 0.4 },
+  { id: "turret", name: "哨戒炮", sprite: "enemy.turret", hp: 60, radius: 18, speed: 0, damage: 0, behavior: "turret", xp: 8, projectileSpeed: 380, projectileDamage: 8, projectileInterval: 1.7, projectileRange: 900 },
+  { id: "boss", name: "失控工业傀儡", sprite: "enemy.boss", hp: 900, radius: 60, speed: 70, damage: 16, behavior: "boss", xp: 60, chargeSpeed: 620, chargeDamage: 16, chargeInterval: 3.2, chargeDuration: 0.45, summonId: "melee", summonCount: 2 },
+];
+
 const AFFIXES = [
   { id: "burn", name: "燃烧", power: 1 },
   { id: "freeze", name: "冰冻", power: 1 },
@@ -86,14 +93,39 @@ export const AffixTable = defineTable("affixes", {
   power: s.number().min(0).default(1),
 });
 
+/** 敌人原型：数值 + 行为 id + 表现资源，全部是数据 */
+export const EnemyTable = defineTable("enemies", {
+  id: s.string().min(1).key(),
+  name: s.string(),
+  sprite: s.string(),
+  hp: s.number().min(1),
+  radius: s.number().min(4),
+  speed: s.number().min(0),
+  damage: s.number().min(0),
+  behavior: s.string(),
+  xp: s.number().int().min(0).default(6),
+  projectileSpeed: s.number().min(0).default(0),
+  projectileDamage: s.number().min(0).default(0),
+  projectileInterval: s.number().min(0).default(1.7),
+  projectileRange: s.number().min(0).default(900),
+  chargeSpeed: s.number().min(0).default(0),
+  chargeDamage: s.number().min(0).default(0),
+  chargeInterval: s.number().min(0).default(3.2),
+  chargeDuration: s.number().min(0).default(0.45),
+  summonId: s.string().default(""),
+  summonCount: s.number().int().min(0).default(0),
+});
+
 export const contentDb = new Database();
 contentDb.register(RoomTemplates);
 contentDb.register(StatusTable);
 contentDb.register(WeaponTable);
 contentDb.register(AffixTable);
+contentDb.register(EnemyTable);
 
 export function loadContent(): number {
   let n = contentDb.seed("roomTemplates", Object.values(TEMPLATES));
+  n += contentDb.seed("enemies", ENEMIES);
   n += contentDb.seed("statuses", CONTENT.statuses);
   n += contentDb.seed("weapons", CONTENT.weapons);
   n += contentDb.seed("affixes", CONTENT.affixes);
@@ -126,3 +158,27 @@ export const getWeapon = (id: string): WeaponRow | undefined => WeaponTable.get(
 export const allWeapons = (): WeaponRow[] => WeaponTable.list() as WeaponRow[];
 export const getAffix = (id: string) => AffixTable.get(id);
 export const allAffixes = () => AffixTable.list();
+export type EnemyDef = {
+  id: string;
+  name: string;
+  sprite: string;
+  hp: number;
+  radius: number;
+  speed: number;
+  damage: number;
+  behavior: string;
+  xp: number;
+  projectileSpeed: number;
+  projectileDamage: number;
+  projectileInterval: number;
+  projectileRange: number;
+  chargeSpeed: number;
+  chargeDamage: number;
+  chargeInterval: number;
+  chargeDuration: number;
+  summonId: string;
+  summonCount: number;
+};
+
+export const getEnemy = (id: string): EnemyDef | undefined => EnemyTable.get(id) as EnemyDef | undefined;
+export const allEnemies = (): EnemyDef[] => EnemyTable.list() as EnemyDef[];

@@ -2,7 +2,8 @@ import type { World } from "@core/ecs/index.ts";
 import { step } from "@core/fsm/index.ts";
 import { Brain, Circle, EnemyTag, Health, Knock, Position } from "../components.ts";
 import { damagePlayer, effects, moveWithWalls, playerEntity, roomCtx } from "../combat.ts";
-import { ENEMY_AI, type EnemyCtx } from "../ai/enemyAi.ts";
+import { ENEMY_BEHAVIORS, type EnemyCtx } from "../ai/enemyAi.ts";
+import { getEnemy } from "../content.ts";
 import { speedMul } from "../status.ts";
 import { ROOM_H, ROOM_W } from "../rooms.ts";
 
@@ -34,8 +35,12 @@ export function enemiesSystem(w: World, dt: number): void {
     const dy = ppos.y - pos.y;
     const dist = Math.hypot(dx, dy) || 1;
 
+    const def = getEnemy(tag.typeId) ?? getEnemy("melee");
+    if (!def) return;
+
     const ctx: EnemyCtx = {
       dt,
+      def,
       dx,
       dy,
       dist,
@@ -51,7 +56,7 @@ export function enemiesSystem(w: World, dt: number): void {
       spawnAdd: () =>
         effects(w).push({
           type: "enemy",
-          kind: "melee",
+          typeId: def.summonId || "melee",
           x: clamp(pos.x + (Math.random() - 0.5) * 400, 120, ROOM_W - 120),
           y: clamp(pos.y + (Math.random() - 0.5) * 400, 120, ROOM_H - 120),
         }),
@@ -60,8 +65,8 @@ export function enemiesSystem(w: World, dt: number): void {
       },
     };
 
-    const def = ENEMY_AI[tag.kind];
-    if (def) step(def, brain, ctx, dt, w.bus);
+    const machine = ENEMY_BEHAVIORS[def.behavior] ?? ENEMY_BEHAVIORS.chaser;
+    if (machine) step(machine, brain, ctx, dt, w.bus);
 
     pos.x = Math.min(Math.max(pos.x, circle.r), ROOM_W - circle.r);
     pos.y = Math.min(Math.max(pos.y, circle.r), ROOM_H - circle.r);
