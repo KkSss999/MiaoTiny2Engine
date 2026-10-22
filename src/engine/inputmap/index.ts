@@ -45,3 +45,4 @@ export class InputActions {
     return p - n;
   }
 }
+export { InputLatch } from "./latch.ts";

@@ -54,3 +54,51 @@ test("runtime rejects reentrant ticks and resets until outside the tick", () => 
   rt.schedule.add("reset", () => rt.reset()); assert.throws(() => rt.advance(10), /during a simulation tick/);
   rt.schedule.remove("reset"); rt.reset(); rt.advance(10); assert.equal(rt.frame, 1);
 });
+
+test("nested advance rejects even after pause inside a tick", () => {
+  const rt = new Runtime({ clock: new Loop(10) });
+  rt.schedule.add("nested", () => { rt.pause(); rt.advance(10); });
+  assert.throws(() => rt.advance(10), /not reentrant/); assert.equal(rt.faulted, true);
+});
+test("managed event backlog faults without changing standalone drain", () => {
+  const event = defineEvent<void>("runtime.backlog");
+  for (const strict of [false, true]) {
+    const rt = new Runtime({ clock: new Loop(10), eventPassLimit: 1, faultOnEventBacklog: strict });
+    rt.world.bus.on(event, () => rt.world.bus.post(event, undefined)); rt.world.bus.post(event, undefined);
+    if (strict) {
+      assert.throws(() => rt.advance(10), /backlog/); assert.equal(rt.frame, 0); assert.equal(rt.world.bus.pending, 0);
+    } else { rt.advance(10); assert.equal(rt.frame, 1); assert.equal(rt.world.bus.pending, 1); }
+  }
+  const rt = new Runtime(); rt.world.bus.on(event, () => rt.world.bus.post(event, undefined)); rt.world.bus.post(event, undefined);
+  rt.world.bus.drain(1); assert.equal(rt.world.bus.pending, 1);
+});
+test("step hooks clean up failed entries without hiding the primary error", () => {
+  const rt = new Runtime({ clock: new Loop(10) }); const seen: string[] = [];
+  assert.throws(() => rt.advance(10, {
+    beforeStep: () => { seen.push("begin"); throw Error("primary"); },
+    finishStep: () => { seen.push("finish"); throw Error("cleanup"); },
+  }), (error: unknown) => error instanceof AggregateError && error.errors[0].message === "primary" && error.errors[1].message === "cleanup");
+  assert.deepEqual(seen, ["begin", "finish"]); assert.equal(rt.frame, 0); assert.equal(rt.faulted, true);
+});
+test("step hooks preserve interpolation and reject asynchronous work", () => {
+  const rt = new Runtime({ clock: new Loop(10) }); const seen: number[] = [];
+  const tick = rt.advance(25, { beforeStep: c => { seen.push(c.frame); }, finishStep: c => { seen.push(-c.frame); } });
+  assert.deepEqual(seen, [1, -1, 2, -2]); assert.equal(tick.alpha, .5); assert.equal(rt.frame, 2);
+  assert.throws(() => rt.advance(5, { beforeStep: async () => {} }), /synchronous/);
+});
+test("invalid managed queue options reject before creating a Runtime", () => {
+  for (const eventPassLimit of [0, -1, 1.5, NaN, Infinity]) assert.throws(() => new Runtime({ eventPassLimit }), RangeError);
+  assert.equal(new Runtime().eventPassLimit, 32); assert.equal(new Runtime().faultOnEventBacklog, false);
+});
+test("finish hook failure faults after commit without advancing the completed counter", () => {
+  const rt = new Runtime({ clock: new Loop(10) }); let mutations = 0;
+  rt.schedule.add("mutate", w => { w.commands.run(() => { mutations++; }); });
+  assert.throws(() => rt.advance(20, { finishStep: () => { throw Error("finish failed"); } }), /finish failed/);
+  assert.equal(mutations, 1); assert.equal(rt.frame, 0); assert.equal(rt.faulted, true); assert.equal(rt.world.commands.pending, 0);
+});
+test("rejecting a custom hook thenable does not execute it", async () => {
+  let invoked = false; let finished = 0; const rt = new Runtime({ clock: new Loop(10) });
+  assert.throws(() => rt.advance(10, { beforeStep: () => ({ then() { invoked = true; } }), finishStep: () => { finished++; } }), /synchronous/);
+  await Promise.resolve(); await Promise.resolve();
+  assert.equal(invoked, false); assert.equal(finished, 1); assert.equal(rt.faulted, true);
+});
