@@ -6,3 +6,10 @@ dist
 src-tauri/target
 tsconfig.tsbuildinfo
 *.log
+
+# Local operation lock files
+.dsh-ops-update-*.lock
+
+# Local environment secrets
+.env*
+!.env.example
