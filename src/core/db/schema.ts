@@ -3,7 +3,7 @@ export type Issue = { path: string; message: string };
 export class ValidationError extends Error {
   readonly issues: Issue[];
   constructor(scope: string, issues: Issue[]) {
-    super(`${scope} 校验失败：\n` + issues.map((i) => `  - ${i.path}: ${i.message}`).join("\n"));
+    super(`${scope} validation failed: \n` + issues.map((i) => `  - ${i.path}: ${i.message}`).join("\n"));
     this.name = "ValidationError";
     this.issues = issues;
   }
@@ -31,7 +31,7 @@ export type ObjectValue<S> = { [K in keyof S]: Infer<S[K]> };
 export class SchemaError extends Error {
   readonly issues: Issue[];
   constructor(issues: Issue[]) {
-    super("schema 定义有误：\n" + issues.map((i) => `  - ${i.path}: ${i.message}`).join("\n"));
+    super("Invalid schema definition: \n" + issues.map((i) => `  - ${i.path}: ${i.message}`).join("\n"));
     this.name = "SchemaError";
     this.issues = issues;
   }
@@ -63,7 +63,7 @@ class Builder<T> implements Validator<T> {
     if (value === undefined) {
       if (this.defFactory) return this.defFactory();
       if (this.optionalFlag) return undefined;
-      issues.push({ path, message: "必填字段缺失" });
+      issues.push({ path, message: "Required field missing" });
       return undefined;
     }
     return this.check(value, path, issues);
@@ -102,7 +102,7 @@ class Builder<T> implements Validator<T> {
     return next;
   }
 
-  /** 追加一条约束；返回 this 类型，链式调用不会丢方法 */
+  /** Append a constraint; return this so chained calls retain methods. */
   wrap(describe: (parsed: T) => boolean, message: string): this {
     const next = this.clone();
     const base = next.check;
@@ -121,40 +121,40 @@ class Builder<T> implements Validator<T> {
 
 class NumBuilder extends Builder<number> {
   min(n: number): this {
-    return this.wrap((v) => v >= n, `不能小于 ${n}`);
+    return this.wrap((v) => v >= n, `Must be at least ${n}`);
   }
   max(n: number): this {
-    return this.wrap((v) => v <= n, `不能大于 ${n}`);
+    return this.wrap((v) => v <= n, `Must be at most ${n}`);
   }
   int(): this {
-    return this.wrap((v) => Number.isInteger(v), "必须是整数");
+    return this.wrap((v) => Number.isInteger(v), "Must be an integer");
   }
   positive(): this {
-    return this.wrap((v) => v > 0, "必须大于 0");
+    return this.wrap((v) => v > 0, "Must be greater than 0");
   }
 }
 
 class StrBuilder extends Builder<string> {
   min(n: number): this {
-    return this.wrap((v) => v.length >= n, `长度至少 ${n}`);
+    return this.wrap((v) => v.length >= n, `Minimum length ${n}`);
   }
   max(n: number): this {
-    return this.wrap((v) => v.length <= n, `长度至多 ${n}`);
+    return this.wrap((v) => v.length <= n, `Maximum length ${n}`);
   }
   pattern(re: RegExp, message?: string): this {
-    return this.wrap((v) => re.test(v), message ?? `不匹配 ${re}`);
+    return this.wrap((v) => re.test(v), message ?? `Does not match ${re}`);
   }
   nonEmpty(): this {
-    return this.wrap((v) => v.length > 0, "不能为空");
+    return this.wrap((v) => v.length > 0, "Must not be empty");
   }
 }
 
 class ArrBuilder<T> extends Builder<T[]> {
   min(n: number): this {
-    return this.wrap((v) => v.length >= n, `至少 ${n} 项`);
+    return this.wrap((v) => v.length >= n, `At least ${n} items`);
   }
   max(n: number): this {
-    return this.wrap((v) => v.length <= n, `至多 ${n} 项`);
+    return this.wrap((v) => v.length <= n, `At most ${n} items`);
   }
 }
 
@@ -162,7 +162,7 @@ export const s = {
   string(): StrBuilder {
     return new StrBuilder("string", (value, path, issues) => {
       if (typeof value !== "string") {
-        issues.push({ path, message: `期望 string，收到 ${describeType(value)}` });
+        issues.push({ path, message: `Expected string, received ${describeType(value)}` });
         return undefined;
       }
       return value;
@@ -172,7 +172,7 @@ export const s = {
   number(): NumBuilder {
     return new NumBuilder("number", (value, path, issues) => {
       if (typeof value !== "number" || Number.isNaN(value)) {
-        issues.push({ path, message: `期望 number，收到 ${describeType(value)}` });
+        issues.push({ path, message: `Expected number, received ${describeType(value)}` });
         return undefined;
       }
       return value;
@@ -182,7 +182,7 @@ export const s = {
   boolean(): Builder<boolean> {
     return new Builder<boolean>("boolean", (value, path, issues) => {
       if (typeof value !== "boolean") {
-        issues.push({ path, message: `期望 boolean，收到 ${describeType(value)}` });
+        issues.push({ path, message: `Expected boolean, received ${describeType(value)}` });
         return undefined;
       }
       return value;
@@ -193,7 +193,7 @@ export const s = {
     const allowed = new Set<string>(values as readonly string[]);
     return new Builder<V[number]>("enum", (value, path, issues) => {
       if (typeof value !== "string" || !allowed.has(value)) {
-        issues.push({ path, message: `期望 ${values.join(" | ")}，收到 ${JSON.stringify(value)}` });
+        issues.push({ path, message: `Expected ${values.join(" | ")}, received ${JSON.stringify(value)}` });
         return undefined;
       }
       return value as V[number];
@@ -203,7 +203,7 @@ export const s = {
   literal<const V extends string | number | boolean>(value: V): Builder<V> {
     return new Builder<V>("literal", (input, path, issues) => {
       if (input !== value) {
-        issues.push({ path, message: `期望 ${JSON.stringify(value)}` });
+        issues.push({ path, message: `Expected ${JSON.stringify(value)}` });
         return undefined;
       }
       return value;
@@ -213,7 +213,7 @@ export const s = {
   array<T>(item: Validator<T>): ArrBuilder<T> {
     return new ArrBuilder<T>("array", (value, path, issues) => {
       if (!Array.isArray(value)) {
-        issues.push({ path, message: `期望 array，收到 ${describeType(value)}` });
+        issues.push({ path, message: `Expected array, received ${describeType(value)}` });
         return undefined;
       }
       const out: T[] = [];
@@ -228,7 +228,7 @@ export const s = {
   object<S extends AnyShape>(shape: S): Builder<ObjectValue<S>> {
     return new Builder<ObjectValue<S>>("object", (value, path, issues) => {
       if (typeof value !== "object" || value === null || Array.isArray(value)) {
-        issues.push({ path, message: `期望 object，收到 ${describeType(value)}` });
+        issues.push({ path, message: `Expected object, received ${describeType(value)}` });
         return undefined;
       }
       const input = value as Record<string, unknown>;
@@ -238,7 +238,7 @@ export const s = {
         if (parsed !== undefined) out[key] = parsed;
       }
       for (const key of Object.keys(input)) {
-        if (!(key in shape)) issues.push({ path: path ? `${path}.${key}` : key, message: "未知字段（schema 未声明）" });
+        if (!(key in shape)) issues.push({ path: path ? `${path}.${key}` : key, message: "Unknown field (not declared in schema)" });
       }
       return out as ObjectValue<S>;
     });
@@ -257,7 +257,7 @@ export function describeType(value: unknown): string {
 
 export function keyFieldOf(shape: AnyShape): string {
   const keys = Object.keys(shape).filter((k) => shape[k].keyFlag);
-  if (keys.length === 0) throw new SchemaError([{ path: "schema", message: "未声明主键（用 .key()）" }]);
-  if (keys.length > 1) throw new SchemaError(keys.slice(1).map((k) => ({ path: k, message: "只能有一个主键" })));
+  if (keys.length === 0) throw new SchemaError([{ path: "schema", message: "No primary key declared (use .key())" }]);
+  if (keys.length > 1) throw new SchemaError(keys.slice(1).map((k) => ({ path: k, message: "Only one primary key is allowed" })));
   return keys[0];
 }

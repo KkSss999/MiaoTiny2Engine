@@ -4,7 +4,7 @@ import { EventBus, Lifetime, defineEvent } from "../index.ts";
 
 const Ping = defineEvent<number>("test.Ping");
 
-test("Lifetime：fork 出的子节点随父销毁", () => {
+test("Lifetime: forked children are disposed with their parent", () => {
   const root = new Lifetime();
   const a = root.fork();
   const b = a.fork();
@@ -15,7 +15,7 @@ test("Lifetime：fork 出的子节点随父销毁", () => {
   assert.equal(b.disposed, true);
 });
 
-test("Lifetime：销毁回调按注册逆序执行", () => {
+test("Lifetime: disposal callbacks run in reverse registration order", () => {
   const life = new Lifetime();
   const order: string[] = [];
   life.onDispose(() => order.push("first"));
@@ -24,7 +24,7 @@ test("Lifetime：销毁回调按注册逆序执行", () => {
   assert.deepEqual(order, ["second", "first"]);
 });
 
-test("Lifetime：先销毁子节点，再执行自己的回调", () => {
+test("Lifetime: dispose children before running own callbacks", () => {
   const root = new Lifetime();
   const order: string[] = [];
   root.onDispose(() => order.push("root"));
@@ -34,7 +34,7 @@ test("Lifetime：先销毁子节点，再执行自己的回调", () => {
   assert.deepEqual(order, ["child", "root"]);
 });
 
-test("Lifetime：销毁后注册的回调立即执行（不会泄漏）", () => {
+test("Lifetime: callbacks registered after disposal run immediately without leaks", () => {
   const life = new Lifetime();
   life.dispose();
   let ran = false;
@@ -44,7 +44,7 @@ test("Lifetime：销毁后注册的回调立即执行（不会泄漏）", () => 
   assert.equal(ran, true);
 });
 
-test("Lifetime：dispose 幂等，回调只跑一次", () => {
+test("Lifetime: dispose is idempotent and callbacks run once", () => {
   const life = new Lifetime();
   let n = 0;
   life.onDispose(() => n++);
@@ -53,7 +53,7 @@ test("Lifetime：dispose 幂等，回调只跑一次", () => {
   assert.equal(n, 1);
 });
 
-test("Lifetime：单个回调抛错不影响其它回调", () => {
+test("Lifetime: one callback failure does not prevent others", () => {
   const life = new Lifetime();
   const order: string[] = [];
   life.onDispose(() => order.push("a"));
@@ -68,7 +68,7 @@ test("Lifetime：单个回调抛错不影响其它回调", () => {
   assert.deepEqual(order, ["c", "a"]);
 });
 
-test("EventBus.scoped(lifetime)：生命周期结束自动退订", () => {
+test("EventBus.scoped(lifetime): unsubscribe automatically on disposal", () => {
   const bus = new EventBus();
   const life = new Lifetime();
   const got: number[] = [];
@@ -80,10 +80,10 @@ test("EventBus.scoped(lifetime)：生命周期结束自动退订", () => {
 
   life.dispose();
   bus.emit(Ping, 2);
-  assert.deepEqual(got, [1], "销毁后不再收到事件");
+  assert.deepEqual(got, [1], "no events received after disposal");
 });
 
-test("父生命周期销毁，孙作用域的订阅也会退订", () => {
+test("parent disposal unsubscribes grandchild scopes too", () => {
   const bus = new EventBus();
   const root = new Lifetime();
   const child = root.fork();
@@ -99,7 +99,7 @@ test("父生命周期销毁，孙作用域的订阅也会退订", () => {
   assert.deepEqual(got, []);
 });
 
-test("activate 状态流转", () => {
+test("activate state transitions", () => {
   const life = new Lifetime();
   assert.equal(life.active, false);
   life.activate();

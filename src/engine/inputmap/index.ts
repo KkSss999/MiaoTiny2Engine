@@ -1,9 +1,9 @@
 import type { InputState } from "../../core/kernel/index.ts";
 
 /**
- * 动作映射：把"物理键"和"游戏动作"解耦。
+ * Action mapping decouples physical keys from game actions.
  *
- * 系统里只写 input.action("move.up")，改键、手柄、多平台都不用动玩法代码。
+ * Systems consume named actions, allowing bindings/platform input to change without gameplay changes.
  */
 export type ActionMap = Record<string, string[]>;
 
@@ -11,7 +11,7 @@ export class InputActions {
   private readonly input: InputState;
   private map: ActionMap;
 
-  // 不用参数属性：node 的 strip-only 模式不支持，测试里会直接加载失败
+  // Avoid parameter properties: Node strip-only mode cannot load them in tests.
   constructor(input: InputState, map: ActionMap = {}) {
     this.input = input;
     this.map = map;
@@ -21,7 +21,7 @@ export class InputActions {
     this.map = map;
   }
 
-  /** 任一绑定键按住即真 */
+  /** True when any bound key is held. */
   down(action: string): boolean {
     const keys = this.map[action];
     if (!keys) return false;
@@ -29,7 +29,7 @@ export class InputActions {
     return false;
   }
 
-  /** 任一绑定键本帧刚按下（消费一次） */
+  /** True when any bound key was newly pressed this frame; consume once. */
   pressed(action: string): boolean {
     const keys = this.map[action];
     if (!keys) return false;
@@ -38,7 +38,7 @@ export class InputActions {
     return hit;
   }
 
-  /** 一对反义动作合成 -1 / 0 / 1 */
+  /** Combine opposing actions into -1 / 0 / 1. */
   axis(negative: string, positive: string): number {
     const n = this.down(negative) ? 1 : 0;
     const p = this.down(positive) ? 1 : 0;

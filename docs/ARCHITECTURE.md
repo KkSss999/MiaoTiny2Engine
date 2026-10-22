@@ -1,10 +1,10 @@
-# 架构复核
+# Architecture Review
 
-## 结论
+## Assessment
 
-方向正确：纯 core + 可选平台适配器 + 应用层组合，足以承载轻量 2D 游戏。当前修订首先补齐所有权、时间、事件、数据变更契约，而不是增加框架层数。它是可复用框架底座，不等于已经完成的平台引擎。
+The direction is sound: a pure core, optional platform adapters and application-level composition can underpin lightweight 2D games. This revision prioritizes ownership, timing, event and data-change contracts over adding framework layers. It is a reusable foundation, not a completed platform engine. Product goals and release acceptance are defined in [Product](Product.md) and [Version](Version.md).
 
-## 依赖方向
+## Dependency direction
 
 ```text
 consumer application
@@ -17,28 +17,28 @@ consumer application
        └─ agent → kernel
 ```
 
-core 不允许依赖第三方运行时包、浏览器适配器或应用。边界检查使用 TypeScript AST，覆盖普通/副作用/动态 import、re-export 和 require；禁止不可静态检查的计算导入。它检查模块依赖方向，不证明行为上的“只读渲染”，也不强制内部模块只能经 barrel 导入。
+Core must not depend on third-party runtime packages, browser adapters or applications. The boundary checker uses the TypeScript AST and covers ordinary, side-effect and dynamic imports, re-exports and require; it rejects computed imports that cannot be checked statically. It checks module dependency direction, not behavioral read-only rendering, and does not require internal modules to import exclusively through barrels.
 
-## 数据与运行
+## Data and execution
 
-- ECS 是高频、可变的模拟数据。结构操作和显式 set 发变更通知；直接 get/query 字段修改不追踪。需要回放或网络同步时，应用必须明确采样/dirty tracking 策略。
-- DB 是低频、受校验的内容/持久化数据。读写边界克隆，CRUD 维护索引。导入先完整校验所有待替换表，全部提交后通知观察者。
-- Runtime 统一每个固定步：Schedule → commands.flush → bus.drain。事件中新增命令留到下一步；异步 I/O 不属于模拟 tick。
-- Loop 是步数规划器；Runtime.frame/elapsed 和系统上下文代表已执行的模拟步。不能把一次 catch-up 后的 Loop.frame 当成每一步的 frame。
-- Lifetime/EntityScope 管理所有权；应用在初始化时注册系统、资源、订阅，在 reset 后重新装配世界。dispose 不允许复用。
-- renderer 消费状态、生成表现对象，不能成为逻辑真相；框架不会替应用自动强制只读。
+- ECS holds frequently updated mutable simulation data. Structural operations and explicit set emit change notifications; direct get/query field writes are not tracked. Replay or network synchronization would need an explicit sampling/dirty-tracking strategy.
+- DB holds lower-frequency validated content/persistent data. Values are cloned at read/write boundaries; CRUD maintains indexes. Imports validate every replacement table before committing all tables and notifying observers.
+- Runtime orders each fixed step: Schedule → commands.flush → bus.drain. Commands created by events wait until the next step; asynchronous I/O is outside the simulation tick.
+- Loop plans step counts; Runtime.frame/elapsed and system contexts describe completed simulation steps. Do not treat Loop.frame after a catch-up batch as the frame of every step in that batch.
+- Lifetime/EntityScope manage ownership. Applications register systems, resources and subscriptions during initialization and reassemble the world after reset. Disposal is terminal.
+- The renderer consumes state and produces presentation objects; it must not become gameplay truth. The framework does not automatically enforce read-only access.
 
-## 保留而非扩张
+## Preserve rather than expand
 
-保留现有 archetype ECS、schema/store/table、FSM、流场、确定性 RNG。没有新后端、微服务、依赖注入容器、网络协议或通用编辑器。浏览器音频仍需用户手势；图像由 Pixi 的真实异步加载器加载，纹理由调用者按所有权管理。
+Keep the existing archetype ECS, schema/store/table, FSM, flow fields and deterministic RNG. No new backend, microservices, dependency-injection container, network protocol or general editor is introduced. Browser audio still needs a user gesture; images use Pixi's actual asynchronous loader, and callers manage texture ownership.
 
-## 尚待真实使用验证的决定
+## Decisions needing real usage evidence
 
-1. 一次最小真实应用验证 API 易用性与渲染生命周期，再决定是否拆包。当前源模块边界比提前 monorepo 更轻。
-2. archetype/SparseSet、索引与克隆成本需要代表性实体量 benchmark；单元测试通过不等于性能达标。
-3. 全局命名 registry 目前严格拒绝不同定义复用同名；插件/HMR 若成为需求，再引入显式 Registry 实例，不能静默覆盖。
-4. 保存格式只覆盖 DB 快照，不声称支持任意 ECS、函数、浏览器句柄或完整游戏状态恢复。
-5. 回放/多人网络同步需要显式输入记录、随机流、时钟和状态序列化；当前确定性原语只是基础。
-6. WebAudio/Pixi adapter 单测不替代真实浏览器、GPU、音频设备和长时运行 QA。
+1. Use a minimal real application to examine API usability and rendering lifecycle before splitting packages. Current source boundaries are simpler than a premature monorepo. This intermediate check does not satisfy the complete-game release threshold in [Version](Version.md).
+2. Archetype/SparseSet, indexing and cloning costs need benchmarks with representative entity counts; passing unit tests does not establish performance suitability.
+3. The global named registry currently rejects different definitions under the same name. If plugins/HMR become requirements, introduce an explicit Registry rather than silently overwriting definitions.
+4. The save format covers DB snapshots, not arbitrary ECS state, functions, browser handles or complete game restoration.
+5. Replay/multiplayer synchronization requires explicit input recording, random streams, clocks and state serialization; current deterministic primitives are only foundations.
+6. WebAudio/Pixi adapter unit tests do not replace real browser, GPU, audio-device or long-running QA.
 
-先用无头示例证明组合契约，再按应用需求补齐能力，不再把旧游戏的规则变成“引擎通用层”。
+First prove composition contracts with the headless example, then add capabilities required by applications. Do not turn old-game rules into a supposed general engine layer.

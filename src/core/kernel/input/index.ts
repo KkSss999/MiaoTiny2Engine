@@ -1,13 +1,13 @@
 /**
- * 输入状态机：只管"按下了什么"，不知道任何键位含义。
+ * Input state tracks pressed controls without assigning gameplay meanings.
  *
- * 不含 DOM —— 事件绑定留在消费方平台层，
- * 这样"按下—消费—复位"这套逻辑可以脱离浏览器测试。
+ * No DOM dependency; consumers bind platform events,
+ * so press/consume/reset logic can be tested without a browser.
  */
 export class InputState {
-  /** 当前按住的键（KeyboardEvent.code） */
+  /** Currently held keys (KeyboardEvent.code). */
   readonly keys = new Set<string>();
-  /** 本帧刚按下的键，consume 一次后失效 */
+  /** Keys newly pressed this frame; each can be consumed once. */
   readonly pressed = new Set<string>();
 
   mouseX = 0;
@@ -27,7 +27,7 @@ export class InputState {
     this.keys.delete(code);
   }
 
-  /** 按下并返回是否消费到（单次触发用） */
+  /** Consume a press and return whether it was available, for one-shot actions. */
   consume(code: string): boolean {
     if (!this.pressed.has(code)) return false;
     this.pressed.delete(code);
@@ -48,12 +48,12 @@ export class InputState {
     this.down = false;
   }
 
-  /** 每帧末清掉"刚按下"，按住状态保留 */
+  /** Clear new presses at frame end, retaining held state. */
   clearFrame(): void {
     this.pressed.clear();
   }
 
-  /** 失焦/切后台/右键菜单：全部松开，避免卡键 */
+  /** Release everything on focus loss/background/context menu to avoid stuck input. */
   reset(): void {
     this.keys.clear();
     this.pressed.clear();

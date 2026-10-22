@@ -24,20 +24,20 @@ function reachableRatio(nav: ReturnType<typeof buildNav>): number {
   return free === 0 ? 1 : reached / free;
 }
 
-test("空房间：绝大多数可走格都能到达玩家", () => {
+test("empty room: most walkable cells can reach the player", () => {
   const nav = buildNav(BORDER, W, H);
   computeFlow(nav, 900, 550);
-  assert.ok(reachableRatio(nav) > 0.9, "空房间连通性应接近 100%");
+  assert.ok(reachableRatio(nav) > 0.9, "empty-room connectivity should approach 100%");
 });
 
-test("流场会绕过一堵竖墙", () => {
+test("flow field navigates around a vertical wall", () => {
   const walls = [...BORDER, { x: 860, y: 180, w: 60, h: 740 }];
   const nav = buildNav(walls, W, H);
   computeFlow(nav, 1200, 550);
 
   const dir = flowDir(nav, 700, 550);
-  assert.ok(dir, "墙左侧应该能找到方向");
-  assert.ok(Math.abs(dir!.x) + Math.abs(dir!.y) > 0.9, "方向应当是单位向量");
+  assert.ok(dir, "a direction should exist left of the wall");
+  assert.ok(Math.abs(dir!.x) + Math.abs(dir!.y) > 0.9, "direction should be a unit vector");
 
   let x = 700;
   let y = 550;
@@ -47,10 +47,10 @@ test("流场会绕过一堵竖墙", () => {
     x += d.x * nav.cell;
     y += d.y * nav.cell;
   }
-  assert.ok(Math.hypot(x - 700, y - 550) > nav.cell, "应当真的移动了");
+  assert.ok(Math.hypot(x - 700, y - 550) > nav.cell, "should have actually moved");
 });
 
-test("玩家所在格距离为 0，邻居距离递增", () => {
+test("player cell has distance 0 and neighboring distances increase", () => {
   const nav = buildNav(BORDER, W, H);
   computeFlow(nav, 900, 550);
   const center = cellIndexOf(nav, 900, 550);
@@ -59,9 +59,9 @@ test("玩家所在格距离为 0，邻居距离递增", () => {
   assert.ok(nav.dist[center + nav.cols] >= 1);
 });
 
-test("回归：随机墙体布局下必须终止且不产生 NaN", () => {
-  // 之前加权 BFS 允许重新入队，队列越界后 dist 会变成 NaN，
-  // 随后 NaN 比较恒为 false，同一批格子被无限重复入队 → 页面卡死。
+test("regression: random wall layouts terminate without NaN", () => {
+  // The old weighted BFS allowed requeueing; queue overflow produced NaN distances.
+  // NaN comparisons then failed, repeatedly requeueing cells and freezing the page.
   const started = performance.now();
 
   for (let trial = 0; trial < 200; trial++) {
@@ -80,18 +80,18 @@ test("回归：随机墙体布局下必须终止且不产生 NaN", () => {
     computeFlow(nav, 100 + Math.random() * 1600, 100 + Math.random() * 900);
 
     for (let i = 0; i < nav.dist.length; i++) {
-      assert.ok(!Number.isNaN(nav.dist[i]), "dist 不能出现 NaN");
+      assert.ok(!Number.isNaN(nav.dist[i]), "dist must not contain NaN");
     }
 
     const dir = flowDir(nav, 900, 550);
-    assert.ok(dir === null || Number.isFinite(dir.x), "方向必须是有限数");
+    assert.ok(dir === null || Number.isFinite(dir.x), "direction must be finite");
   }
 
   const elapsed = performance.now() - started;
-  assert.ok(elapsed < 3000, `200 个房间应在 3 秒内算完，实际 ${elapsed.toFixed(0)}ms`);
+  assert.ok(elapsed < 3000, `200 rooms should finish within 3 seconds; actual ${elapsed.toFixed(0)}ms`);
 });
 
-test("被围死时返回 null 而不是瞎指方向", () => {
+test("return null when trapped instead of an arbitrary direction", () => {
   const cage: NavRect[] = [
     ...BORDER,
     { x: 600, y: 200, w: 600, h: 40 },

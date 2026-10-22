@@ -2,8 +2,8 @@ import type { ComponentType } from "./component.ts";
 import type { Entity } from "./entity.ts";
 
 /**
- * 一组拥有完全相同组件集合的实体。
- * 列式存储：columns[i][row] 是第 i 个组件的值，row 与 entities[row] 对齐。
+ * Entities sharing exactly the same component set.
+ * Column storage: columns[i][row] holds component i, aligned with entities[row].
  */
 export class Archetype {
   readonly types: ComponentType<unknown>[];
@@ -44,7 +44,7 @@ export class Archetype {
     return this.columns.map((c) => c[row]);
   }
 
-  /** 把最后一行搬到 row 上，返回被搬动的实体（调用方负责更新它的 row 记录） */
+  /** Move the last row into row and return that entity; the caller updates its row record. */
   swapRemove(row: number): Entity | undefined {
     const last = this.entities.length - 1;
     const moved = row !== last ? this.entities[last] : undefined;

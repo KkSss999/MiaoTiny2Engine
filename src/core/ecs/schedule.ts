@@ -4,7 +4,7 @@ export type SystemContext = { dt: number; elapsed: number; frame: number };
 export type SystemFn = (world: World, ctx: SystemContext) => void;
 
 export type SystemOptions = {
-  /** 小的先跑；同相位按加入顺序 */
+  /** Lower phases run first; ties follow insertion order. */
   phase?: number;
 };
 

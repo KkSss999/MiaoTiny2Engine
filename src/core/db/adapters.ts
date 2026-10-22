@@ -24,7 +24,7 @@ export class MemoryStorage implements StorageAdapter {
   }
 }
 
-/** 浏览器环境：localStorage。Tauri 下换成文件适配器即可，核心不用改 */
+/** Browser localStorage adapter. A Tauri file adapter can replace it without core changes. */
 export class LocalStorageAdapter implements StorageAdapter {
   private prefix: string;
 

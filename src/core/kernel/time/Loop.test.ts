@@ -4,7 +4,7 @@ import { Loop } from "./Loop.ts";
 
 const loop = (maxSteps = 4) => new Loop(10, maxSteps, 100);
 
-test("一帧刚好一个步长：跑 1 步，alpha 为 0", () => {
+test("exactly one step per frame: 1 step and alpha 0", () => {
   const l = loop();
   const tick = l.advance(10);
   assert.equal(tick.steps, 1);
@@ -13,7 +13,7 @@ test("一帧刚好一个步长：跑 1 步，alpha 为 0", () => {
   assert.equal(l.elapsedSec, 0.01);
 });
 
-test("不够一个步长：跑 0 步，alpha 累积", () => {
+test("less than one step: 0 steps with accumulated alpha", () => {
   const l = loop();
   let tick = l.advance(4);
   assert.equal(tick.steps, 0);
@@ -24,11 +24,11 @@ test("不够一个步长：跑 0 步，alpha 累积", () => {
   assert.equal(Math.round(tick.alpha * 100) / 100, 0.8);
 
   tick = l.advance(4);
-  assert.equal(tick.steps, 1, "攒够 10ms 就跑一步");
+  assert.equal(tick.steps, 1, "run one step after accumulating 10ms");
   assert.equal(Math.round(tick.alpha * 100) / 100, 0.2);
 });
 
-test("一帧多步：25ms → 2 步，alpha 0.5", () => {
+test("multiple steps per frame: 25ms → 2 steps and alpha 0.5", () => {
   const l = loop();
   const tick = l.advance(25);
   assert.equal(tick.steps, 2);
@@ -36,23 +36,23 @@ test("一帧多步：25ms → 2 步，alpha 0.5", () => {
   assert.equal(l.frame, 2);
 });
 
-test("追帧上限：超出部分被丢弃，alpha 不越界", () => {
+test("catch-up limit: excess steps are dropped and alpha stays in range", () => {
   const l = loop(4);
   const tick = l.advance(1000);
-  assert.equal(tick.steps, 4, "最多跑 maxSteps 步");
+  assert.equal(tick.steps, 4, "run at most maxSteps steps");
   assert.ok(tick.alpha >= 0 && tick.alpha < 1);
-  assert.ok(l.droppedSteps > 0, "丢掉的步数被记录");
-  assert.equal(tick.deltaMs, 100, "单帧耗时被截断到 maxDeltaMs");
+  assert.ok(l.droppedSteps > 0, "dropped steps are recorded");
+  assert.equal(tick.deltaMs, 100, "frame delta is clamped to maxDeltaMs");
 });
 
-test("丢弃之后不会死亡螺旋：下一帧恢复正常", () => {
+test("dropping steps prevents a catch-up spiral and the next frame recovers", () => {
   const l = loop(4);
   l.advance(1000);
   const next = l.advance(10);
   assert.equal(next.steps, 1);
 });
 
-test("负数和超大值都被夹住", () => {
+test("negative and oversized deltas are clamped", () => {
   const l = loop();
   assert.equal(l.advance(-5).steps, 0);
   assert.equal(l.advance(0).steps, 0);
@@ -60,7 +60,7 @@ test("负数和超大值都被夹住", () => {
   assert.equal(big.deltaMs, 100);
 });
 
-test("reset 清空全部状态", () => {
+test("reset clears all state", () => {
   const l = loop();
   l.advance(55);
   l.reset();
@@ -70,7 +70,7 @@ test("reset 清空全部状态", () => {
   assert.equal(l.advance(10).steps, 1);
 });
 
-test("alpha 永远落在 [0, 1)", () => {
+test("alpha always stays in [0, 1)", () => {
   const l = loop();
   for (const d of [0, 3, 7, 10, 11, 9.9, 16, 1]) {
     const tick = l.advance(d);

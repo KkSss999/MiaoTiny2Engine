@@ -7,9 +7,9 @@ import { DebugRegistry, countComponents, inspectEntity, listEntities } from "../
 const Position = defineComponent("DbgPosition", () => ({ x: 0, y: 0 }));
 const Tag = defineComponent("DbgTag", () => ({ value: 1 }));
 
-test("调试注册表：注册、调用、列表、挂载", () => {
+test("debug registry: register, run, list and mount", () => {
   const registry = new DebugRegistry();
-  registry.register("add", (a: number, b: number) => a + b, "两数相加");
+  registry.register("add", (a: number, b: number) => a + b, "Add two numbers");
 
   assert.equal(registry.run("add", [2, 3]), 5);
   assert.equal(registry.list()[0].name, "add");
@@ -21,10 +21,10 @@ test("调试注册表：注册、调用、列表、挂载", () => {
   assert.equal(api.add(4, 5), 9);
   assert.equal(api.help().length, 1);
 
-  assert.throws(() => registry.run("nope"), /没有调试命令/);
+  assert.throws(() => registry.run("nope"), /No debug command/);
 });
 
-test("实体反射：组件快照 / 过滤 / 计数", () => {
+test("entity introspection: component snapshot / filtering / counts", () => {
   const world = new World();
   const a = world.spawn(Position);
   world.add(a, Position, { x: 15, y: 25 });
@@ -42,6 +42,6 @@ test("实体反射：组件快照 / 过滤 / 计数", () => {
   assert.equal(counts.DbgTag, 1);
 
   world.despawn(a);
-  assert.equal(inspectEntity(world, a), null, "死掉的实体查不到");
+  assert.equal(inspectEntity(world, a), null, "destroyed entities cannot be inspected");
   assert.equal(listEntities(world).length, 1);
 });

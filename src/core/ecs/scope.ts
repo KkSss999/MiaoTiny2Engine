@@ -6,11 +6,11 @@ import type { Entity } from "./entity.ts";
 import type { World } from "./world.ts";
 
 /**
- * 实体分组：一组实体共享一个生命周期。
+ * Entity group sharing one lifetime.
  *
- * 这是「房间」「关卡」「场景」这些上层概念共用的下层结构：
- * 上层只需要说明"这些实体属于这里"，销毁时不用再枚举它们的类型。
- * 作用域本身就是一个 Lifetime —— 父级销毁会级联把它也清掉。
+ * Shared primitive underlying rooms, levels and scenes:
+ * declare membership once, without enumerating entity types during destruction.
+ * The scope is a Lifetime and is disposed when its parent is disposed.
  */
 export class EntityScope {
   readonly lifetime: Lifetime;
@@ -22,11 +22,11 @@ export class EntityScope {
     const untrack = world.trackScope(this);
     this.world = world;
     this.lifetime = (parent ?? world.lifetime).fork();
-    // 实体被单独销毁时从成员表剔除：走统一变更通道，不额外造机制
+    // Remove individually destroyed entities through the shared change channel.
     this.detach = world.bus.on(DataChanged, (change) => {
       if (change.schema === ENTITY_SCHEMA && change.type === "delete") this.members.delete(change.key as Entity);
     });
-    // 自己（或被父级）销毁时，清掉组内实体和资源
+    // Clear group entities/resources when disposed directly or by the parent.
     this.lifetime.onDispose(() => {
       untrack();
       this.detach();
@@ -43,7 +43,7 @@ export class EntityScope {
   }
 
   spawn(...types: ComponentType<unknown>[]): Entity {
-    if (this.lifetime.disposed) throw new Error("EntityScope 已销毁，不能再 spawn");
+    if (this.lifetime.disposed) throw new Error("EntityScope is disposed; cannot spawn");
     const e = this.world.spawn(...types);
     try {
       return this.adopt(e);
@@ -55,9 +55,9 @@ export class EntityScope {
     }
   }
 
-  /** 把外部创建的实体收进作用域（比如特效系统生成的） */
+  /** Adopt externally created entities, such as effects. */
   adopt(e: Entity): Entity {
-    if (this.lifetime.disposed) throw new Error("EntityScope 已销毁，不能再接纳实体");
+    if (this.lifetime.disposed) throw new Error("EntityScope is disposed; cannot adopt entities");
     if (!this.world.isAlive(e)) throw new Error("Cannot adopt a stale entity");
     if (this.members.has(e)) return e;
     const life = this.world.entityLifetime(e);

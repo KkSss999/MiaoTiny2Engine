@@ -1,7 +1,7 @@
 /**
- * 行为算法：决策与移动。
- * - fsm：状态机（什么时候做什么）
- * - nav：流场寻路（怎么绕过去）
+ * Behavior algorithms: decision-making and movement.
+ * - fsm: state machines (when to act).
+ * - nav: flow-field navigation (how to get around obstacles).
  */
 export * from "./fsm/index.ts";
 export * from "./nav/index.ts";

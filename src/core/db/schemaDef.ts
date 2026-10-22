@@ -3,8 +3,8 @@ import { s, ValidationError, keyFieldOf, type ObjectValue, type Shape } from "./
 export type SchemaOptions = { version?: number };
 
 /**
- * 具名 schema：数据形状的唯一定义处。
- * ECS 的组件、FSM 的状态数据、游戏的内容表，都从这里拿定义。
+ * Named schema: a single definition of a data shape.
+ * ECS components, FSM state data and game content tables use these definitions.
  */
 export type SchemaDef<S extends Shape = Shape> = {
   readonly name: string;
@@ -15,7 +15,7 @@ export type SchemaDef<S extends Shape = Shape> = {
   create(input?: unknown): ObjectValue<S>;
 };
 
-/** 无主键的数据形状（组件、状态数据用它） */
+/** Data shape without a primary key, for components and state data. */
 export type ShapeDef<S extends Shape = Shape> = {
   readonly name: string;
   readonly shape: S;

@@ -7,15 +7,15 @@ const byId: ComponentType<unknown>[] = [];
 export interface ComponentType<T = unknown> {
   readonly id: number;
   readonly name: string;
-  /** 缺省值工厂：add 时不给值就用它 */
+  /** Default factory used when add receives no value. */
   readonly create: () => T;
-  /** 数据形状来自 @gdd/db；开启校验时 add 会过一遍 */
+  /** Data shape from @gdd/db; add validates it when validation is enabled. */
   readonly shape?: ShapeDef;
 }
 
 /**
- * 组件类型 = 一个稳定 id + 一个缺省值工厂。
- * 组件本身永远是纯数据（可以 JSON 序列化），不要放函数进去。
+ * Component type = a stable id and a default factory.
+ * Components must be plain JSON-serializable data; do not store functions in them.
  */
 export function defineComponent<T>(
   name: string,

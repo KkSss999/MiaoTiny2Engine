@@ -39,14 +39,14 @@ function makeDef(): MachineDef<Ctx, S> {
 
 const ctx = (): Ctx => ({ hp: 100, angry: false, log: [] });
 
-test("初始状态", () => {
+test("initial state", () => {
   const def = makeDef();
   const m = createMachine(def);
   assert.equal(m.state, "idle");
   assert.equal(m.time, 0);
 });
 
-test("when：条件满足即转移", () => {
+test("when: transition when the condition matches", () => {
   const def = makeDef();
   const m = createMachine(def);
   const c = ctx();
@@ -57,18 +57,18 @@ test("when：条件满足即转移", () => {
   assert.equal(m.state, "chase");
 });
 
-test("after：停留够时间才转移", () => {
+test("after: transition after the required duration", () => {
   const def = makeDef();
   const m = createMachine(def);
   const c = ctx();
   m.state = "chase";
   step(def, m, c, 1.0);
-  assert.equal(m.state, "chase", "1 秒还不够 1.5 秒");
+  assert.equal(m.state, "chase", "1 second is less than 1.5 seconds");
   step(def, m, c, 0.6);
   assert.equal(m.state, "idle");
 });
 
-test("on：触发器驱动，且当帧消费完即清空", () => {
+test("on: trigger-driven transitions consume and clear triggers in the same frame", () => {
   const def = makeDef();
   const m = createMachine(def);
   const c = ctx();
@@ -78,13 +78,13 @@ test("on：触发器驱动，且当帧消费完即清空", () => {
   assert.equal(m.state, "stagger");
   assert.deepEqual(m.triggers, []);
 
-  // 触发器不残留到下一帧
+  // Triggers do not survive into the next frame.
   m.state = "chase";
   step(def, m, c, 0.016);
-  assert.equal(m.state, "chase", "hit 已经被消费掉了");
+  assert.equal(m.state, "chase", "hit has already been consumed");
 });
 
-test("转移按声明顺序，第一条命中即生效", () => {
+test("transitions use declaration order and the first match wins", () => {
   const def: MachineDef<Ctx, "a" | "b" | "c"> = {
     id: "order",
     initial: "a",
@@ -99,7 +99,7 @@ test("转移按声明顺序，第一条命中即生效", () => {
   assert.equal(m.state, "b");
 });
 
-test("minTime：拦住所有非 interrupt 转移，interrupt 可以穿透", () => {
+test("minTime: blocks non-interrupt transitions but allows interrupts", () => {
   const def: MachineDef<Ctx, "attack" | "stagger" | "idle"> = {
     id: "minTime",
     initial: "attack",
@@ -119,24 +119,24 @@ test("minTime：拦住所有非 interrupt 转移，interrupt 可以穿透", () =
   const m = createMachine(def);
   const c = ctx();
 
-  // 普通转移被 minTime 拦住
+  // minTime blocks ordinary transitions.
   fire(m, "hit");
   step(def, m, c, 0.1);
-  assert.equal(m.state, "attack", "minTime 0.3 未到，hit 不生效");
+  assert.equal(m.state, "attack", "minTime 0.3 has not elapsed; hit has no effect");
 
-  // interrupt 转移无视 minTime
+  // Interrupt transitions ignore minTime.
   fire(m, "panic");
   step(def, m, c, 0.1);
   assert.equal(m.state, "idle");
 
-  // 过了 minTime 之后普通转移才生效
+  // Ordinary transitions apply only after minTime.
   const m2 = createMachine(def);
   fire(m2, "hit");
   step(def, m2, c, 0.35);
   assert.equal(m2.state, "stagger");
 });
 
-test("enter / exit / update 调用顺序", () => {
+test("enter / exit / update invocation order", () => {
   const def = makeDef();
   const m = createMachine(def);
   const c = ctx();
@@ -146,7 +146,7 @@ test("enter / exit / update 调用顺序", () => {
 
   c.log.length = 0;
   step(def, m, c, 0.1);
-  assert.match(c.log[0], /^update:chase:/, "先 update");
+  assert.match(c.log[0], /^update:chase:/, "update runs first");
   assert.equal(m.state, "chase");
 
   fire(m, "hit");
@@ -156,7 +156,7 @@ test("enter / exit / update 调用顺序", () => {
   assert.ok(c.log.indexOf("exit:chase") < c.log.indexOf("enter:stagger"));
 });
 
-test("stagger 到点自动回到 chase", () => {
+test("stagger returns to chase when its duration expires", () => {
   const def = makeDef();
   const m = createMachine(def);
   const c = ctx();
@@ -165,7 +165,7 @@ test("stagger 到点自动回到 chase", () => {
   assert.equal(m.state, "chase");
 });
 
-test("push / pop：打断后恢复原来的 state 和 time", () => {
+test("push / pop: resume the original state and time after interruption", () => {
   const def = makeDef();
   const m = createMachine(def);
   const c = ctx();
@@ -180,10 +180,10 @@ test("push / pop：打断后恢复原来的 state 和 time", () => {
 
   pop(def, m, c);
   assert.equal(m.state, "chase");
-  assert.equal(m.time, before, "继续原来的计时，而不是重新开始");
+  assert.equal(m.time, before, "resume the original timer rather than restarting it");
 });
 
-test("pop 空栈返回 false", () => {
+test("pop returns false for an empty stack", () => {
   const def = makeDef();
   const m = createMachine(def);
   assert.equal(pop(def, m, ctx()), false);
@@ -200,7 +200,7 @@ test("is / reset", () => {
   assert.equal(m.time, 0);
 });
 
-test("序列化往返：状态机数据可以 JSON 存读", () => {
+test("serialization round trip: FSM data supports JSON persistence", () => {
   const def = makeDef();
   const m = createMachine(def);
   const c = ctx();
@@ -215,14 +215,14 @@ test("序列化往返：状态机数据可以 JSON 存读", () => {
   assert.equal(restored.stack[0].state, "chase");
 });
 
-test("未定义状态直接报错", () => {
+test("undefined states throw immediately", () => {
   const def = makeDef();
   const m = createMachine(def);
   m.state = "nope" as S;
-  assert.throws(() => step(def, m, ctx(), 0.016), /没有状态/);
+  assert.throws(() => step(def, m, ctx(), 0.016), /has no state/);
 });
 
-test("一个完整的敌人行为：巡逻 → 发现 → 攻击 → 受击硬直", () => {
+test("complete enemy behavior: patrol → detect → attack → stagger", () => {
   type E = "patrol" | "chase" | "attack" | "stagger";
   type ECtx = { sees: boolean; inRange: boolean; log: string[] };
   const def: MachineDef<ECtx, E> = {
@@ -259,17 +259,17 @@ test("一个完整的敌人行为：巡逻 → 发现 → 攻击 → 受击硬�
 
   fire(m, "hit");
   step(def, m, c, 0.016);
-  assert.equal(m.state, "attack", "minTime 内不许被打断");
+  assert.equal(m.state, "attack", "cannot interrupt before minTime");
 
   step(def, m, c, 0.5);
   assert.equal(m.state, "attack");
 
   fire(m, "hit");
   step(def, m, c, 0.016);
-  assert.equal(m.state, "stagger", "过了最短停留才可以被打断");
+  assert.equal(m.state, "stagger", "can interrupt after the minimum residence time");
 });
 
-test("转移广播到事件总线（FSM 消费 Event）", () => {
+test("transitions broadcast to the event bus (FSM integrates with Event)", () => {
   const def = makeDef();
   const bus = new EventBus();
   const seen: string[] = [];
@@ -286,7 +286,7 @@ test("转移广播到事件总线（FSM 消费 Event）", () => {
   assert.deepEqual(seen, ["guard:idle->chase", "guard:chase->stagger"]);
 });
 
-test("push / pop 也广播", () => {
+test("push / pop also broadcast", () => {
   const def = makeDef();
   const bus = new EventBus();
   const seen: string[] = [];
@@ -301,7 +301,7 @@ test("push / pop 也广播", () => {
   assert.deepEqual(seen, ["push:chase->stagger", "pop:stagger->chase"]);
 });
 
-test("不传 bus 时不广播，行为不变", () => {
+test("without a bus, behavior is unchanged and nothing broadcasts", () => {
   const def = makeDef();
   const m = createMachine(def);
   const c = ctx();
@@ -310,7 +310,7 @@ test("不传 bus 时不广播，行为不变", () => {
   assert.deepEqual(result, { from: "idle", to: "chase" });
 });
 
-test("时长可以由上下文决定（不同单位不同前摇）", () => {
+test("durations can depend on context, such as per-unit windup", () => {
   type C = { telegraph: number };
   const def: MachineDef<C, "windup" | "fire" | "recover"> = {
     id: "ctx-duration",
@@ -327,14 +327,14 @@ test("时长可以由上下文决定（不同单位不同前摇）", () => {
 
   const a = createMachine(def);
   step(def, a, slow, 0.15);
-  assert.equal(a.state, "windup", "慢速单位 0.15s 还不该出手");
+  assert.equal(a.state, "windup", "slow unit should not fire at 0.15s");
 
   const b = createMachine(def);
   step(def, b, fast, 0.15);
   assert.equal(b.state, "windup");
   step(def, b, fast, 0.1);
-  assert.equal(b.state, "fire", "快速单位 0.25s 已出手");
+  assert.equal(b.state, "fire", "fast unit has fired at 0.25s");
 
   step(def, b, fast, 0.2);
-  assert.equal(b.state, "recover", "开火后进入破绽");
+  assert.equal(b.state, "recover", "enter recovery after firing");
 });

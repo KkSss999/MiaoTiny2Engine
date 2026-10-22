@@ -14,13 +14,13 @@ export type Change<T = unknown> = {
 };
 
 /**
- * 显式 CRUD / ECS 结构变更的通知通道（不追踪 ECS 热路径上的原地写入）。
- * DB 的行变更、ECS 的实体/组件变更，都是同一种 Change 记录。
- * 订阅方按 schema 名过滤（"weapons" / "component/Position" / "ecs/entity"）。
+ * Notification channel for explicit CRUD/ECS structural changes; no tracking of in-place ECS hot-path writes.
+ * DB row and ECS entity/component changes use the same Change record.
+ * Subscribers filter by schema name ("weapons" / "component/Position" / "ecs/entity").
  */
 export const DataChanged = defineEvent<Change>("db:DataChanged");
 
-/** 兼容旧名字 */
+/** Legacy name compatibility. */
 export const StoreChanged = DataChanged;
 
 /**
@@ -52,7 +52,7 @@ export class Store<S extends Shape> {
     const row = structuredClone(this.schema.create(input));
     const key = this.keyOf(row);
     if (this.rowsMap.has(key)) {
-      throw new ValidationError(this.name, [{ path: this.keyName, message: `主键重复：${String(key)}` }]);
+      throw new ValidationError(this.name, [{ path: this.keyName, message: `Duplicate primary key: ${String(key)}` }]);
     }
     this.rowsMap.set(key, row);
     this.notify({ schema: this.name, type: "create", key, after: row });
@@ -66,7 +66,7 @@ export class Store<S extends Shape> {
 
   require(key: Key): ObjectValue<S> {
     const row = this.rowsMap.get(key);
-    if (!row) throw new ValidationError(this.name, [{ path: this.keyName, message: `找不到 ${String(key)}` }]);
+    if (!row) throw new ValidationError(this.name, [{ path: this.keyName, message: `Cannot find ${String(key)}` }]);
     return structuredClone(row);
   }
 
@@ -76,11 +76,11 @@ export class Store<S extends Shape> {
 
   update(key: Key, patch: Partial<ObjectValue<S>>): ObjectValue<S> {
     const before = this.rowsMap.get(key);
-    if (!before) throw new ValidationError(this.name, [{ path: this.keyName, message: `找不到 ${String(key)}` }]);
+    if (!before) throw new ValidationError(this.name, [{ path: this.keyName, message: `Cannot find ${String(key)}` }]);
     const merged = { ...(before as Record<string, unknown>), ...(patch as Record<string, unknown>) };
     const after = structuredClone(this.schema.parse(merged));
     if (this.keyOf(after) !== key) {
-      throw new ValidationError(this.name, [{ path: this.keyName, message: "不允许修改主键" }]);
+      throw new ValidationError(this.name, [{ path: this.keyName, message: "Cannot modify the primary key" }]);
     }
     this.rowsMap.set(key, after);
     this.notify({ schema: this.name, type: "update", key, before, after });
@@ -112,7 +112,7 @@ export class Store<S extends Shape> {
     return out;
   }
 
-  /** 订阅变更（copy-on-write，遍历中订阅/退订安全） */
+  /** Subscribe to changes; copy-on-write makes subscription changes safe during iteration. */
   onChange(fn: (change: Change<ObjectValue<S>>) => void): () => void {
     const next = [...this.listeners, fn];
     this.listeners = next;
@@ -121,14 +121,14 @@ export class Store<S extends Shape> {
     };
   }
 
-  /** 把变更转发到事件总线（DB 消费 Event 的方式） */
+  /** Forward changes to the event bus, integrating DB with Event. */
   bind(bus: EventBus): () => void {
     return this.onChange((change) => {
       bus.emit(StoreChanged, change as Change);
     });
   }
 
-  /** 内部：给子类拿行（Table 索引维护用） */
+  /** Internal row access for subclasses, used by Table index maintenance. */
   protected rows(): Iterable<[Key, ObjectValue<S>]> {
     return this.rowsMap.entries();
   }
@@ -136,7 +136,7 @@ export class Store<S extends Shape> {
   protected keyOf(row: ObjectValue<S>): Key {
     const key = (row as Record<string, unknown>)[this.keyName];
     if (typeof key !== "string" && !(typeof key === "number" && Number.isFinite(key))) {
-      throw new ValidationError(this.name, [{ path: this.keyName, message: "主键必须是字符串或有限数字" }]);
+      throw new ValidationError(this.name, [{ path: this.keyName, message: "Primary key must be a string or finite number" }]);
     }
     return key as Key;
   }
@@ -147,7 +147,7 @@ export class Store<S extends Shape> {
     for (const input of inputs) {
       const row = structuredClone(this.schema.parse(input));
       const key = this.keyOf(row);
-      if (next.has(key)) throw new ValidationError(this.name, [{ path: this.keyName, message: `主键重复：${String(key)}` }]);
+      if (next.has(key)) throw new ValidationError(this.name, [{ path: this.keyName, message: `Duplicate primary key: ${String(key)}` }]);
       next.set(key, row);
     }
     const changes: Change<ObjectValue<S>>[] = [];

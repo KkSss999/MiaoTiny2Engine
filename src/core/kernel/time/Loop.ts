@@ -1,24 +1,24 @@
 export type LoopTick = {
-  /** 本帧应该跑几个固定步 */
+  /** Number of fixed steps to run this frame. */
   steps: number;
-  /** 渲染插值系数，落在 [0, 1) */
+  /** Render interpolation factor in [0, 1). */
   alpha: number;
-  /** 被截断后的真实耗时（毫秒） */
+  /** Clamped real elapsed time in milliseconds. */
   deltaMs: number;
 };
 
 /**
- * 固定步长时钟。
+ * Fixed-step clock.
  *
- * 纯逻辑：不碰 pixi、不碰 world、不读全局时钟。
- * 输入是"这一帧过了多少毫秒"，输出是"该跑几步、插值多少"。
+ * Pure logic: no Pixi, World or global clock access.
+ * Input is elapsed frame milliseconds; output is step count and interpolation.
  *
- * 这样它就能被单测、被回放复用、被无头模拟复用 —— 而 Game 只负责把 ticker 的 delta 喂进来。
+ * Usable in tests, replay plumbing and headless simulation; Game supplies ticker delta.
  */
 export class Loop {
   readonly stepMs: number;
   readonly maxSteps: number;
-  /** 单帧最大接受耗时，防止切后台回来一次跳几百步 */
+  /** Maximum frame delta, preventing hundreds of catch-up steps after backgrounding. */
   readonly maxDeltaMs: number;
 
   private acc = 0;
@@ -43,7 +43,7 @@ export class Loop {
     return this.elapsedMs / 1000;
   }
 
-  /** 因为追帧上限被丢弃的步数（性能问题/切后台的指标） */
+  /** Steps discarded by catch-up limits, useful for performance/background diagnostics. */
   get droppedSteps(): number {
     return this.dropped;
   }
@@ -58,7 +58,7 @@ export class Loop {
     if (steps > this.maxSteps) {
       this.dropped += steps - this.maxSteps;
       steps = this.maxSteps;
-      // 丢掉多余累积，避免"死亡螺旋"：下一帧继续补课
+      // Discard excess accumulation to avoid a catch-up spiral continuing into later frames.
       // Drop whole excess steps, but retain the fractional interpolation remainder.
     }
 

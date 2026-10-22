@@ -5,8 +5,8 @@ import type { World } from "./world.ts";
 type Op = () => void;
 
 /**
- * 延迟结构变更：在系统遍历过程中改 archetype 会让迭代失效，
- * 所以 add/remove/despawn 先入队，统一在帧末 flush。
+ * Defer structural changes: changing archetypes during system iteration invalidates it,
+ * so queue add/remove/despawn and flush them at frame end.
  */
 export class CommandBuffer {
   private world: World;

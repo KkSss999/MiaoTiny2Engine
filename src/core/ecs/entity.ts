@@ -1,4 +1,4 @@
-/** 实体句柄：低 20 位是索引，高 12 位是代数（防止悬空句柄复活） */
+/** Entity handle: low 20 bits index, high 12 bits generation, preventing stale-handle revival. */
 export type Entity = number;
 
 const INDEX_BITS = 20;
@@ -58,7 +58,7 @@ export class EntityAllocator {
     for (const e of this.aliveEntities()) this.destroy(e);
   }
 
-  /** 从 0 开始遍历仍然存活的实体（调试/序列化用，正常逻辑走 query） */
+  /** Iterate live entities from index 0 for debugging/serialization; use queries for normal logic. */
   *aliveEntities(): IterableIterator<Entity> {
     for (let i = 0; i < this.gens.length; i++) {
       if (this.alive[i]) yield makeEntity(i, this.gens[i] ?? 0);

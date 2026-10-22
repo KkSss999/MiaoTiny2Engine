@@ -4,7 +4,7 @@ export type Listener<T> = (payload: T) => void;
 export type Unsubscribe = () => void;
 
 export type OnOptions = {
-  /** 数字大的先执行，同优先级按订阅顺序 */
+  /** Higher priorities run first; ties follow subscription order. */
   priority?: number;
   once?: boolean;
 };
@@ -19,11 +19,11 @@ type Entry = {
 const EMPTY: readonly Entry[] = [];
 
 /**
- * 事件总线。
+ * Event bus.
  *
- * - **emit**：同步派发，立即执行当前监听器（拿到的是订阅时的快照）
- * - **post**：入队，等 drain() 时按 FIFO 派发 —— 用于「系统内产生、帧末处理」的事件
- * - 监听器数组 copy-on-write：派发过程中订阅/退订不会破坏正在跑的循环
+ * - **emit**: synchronous dispatch to current listeners using the subscription snapshot.
+ * - **post**: queue for FIFO dispatch in drain(), for events produced in systems and handled at frame end.
+ * - Copy-on-write listeners allow subscription changes during dispatch without invalidating iteration.
  */
 export class EventBus {
   private listeners = new Map<number, readonly Entry[]>();
@@ -38,7 +38,7 @@ export class EventBus {
     return this.queue.length;
   }
 
-  /** 创建绑定到生命周期的订阅组：lifetime 销毁时自动退订全部 */
+  /** Create a lifetime-bound subscription group; disposal unsubscribes all listeners. */
   scoped(lifetime?: { onDispose: (fn: () => void) => unknown }): EventScope {
     return new EventScope(this, lifetime);
   }
@@ -91,7 +91,7 @@ export class EventBus {
     return (list !== undefined && list.length > 0) || this.anyListeners.length > 0;
   }
 
-  /** 同步派发；返回是否有监听器收到 */
+  /** Dispatch synchronously; return whether any listener received the event. */
   emit<T>(token: EventToken<T>, payload: T): boolean {
     const list = this.listeners.get(token.id);
     const any = this.anyListeners;
@@ -112,14 +112,14 @@ export class EventBus {
     return true;
   }
 
-  /** 延迟派发：入队，等 drain() */
+  /** Queue for deferred dispatch in drain(). */
   post<T>(token: EventToken<T>, payload: T): void {
     this.queue.push({ token: token as EventToken<unknown>, payload });
   }
 
   /**
-   * 处理队列。每轮取出当时的全部事件派发；派发中新 post 的事件进入下一轮。
-   * 返回处理总数。maxPasses 防止事件互相触发导致死循环。
+   * Drain the queue in passes; events posted during dispatch enter the next pass.
+   * Return the total processed count. maxPasses prevents infinite event chains.
    */
   drain(maxPasses = 32): number {
     if (this.draining) throw new Error("EventBus.drain is not reentrant");
@@ -148,7 +148,7 @@ export class EventBus {
     } finally { this.draining = false; }
   }
 
-  /** 调试用：监听所有事件（日志、埋点） */
+  /** Observe all events for debugging, logging and instrumentation. */
   onAny(fn: (token: EventToken<unknown>, payload: unknown) => void): Unsubscribe {
     const next = [...this.anyListeners, fn];
     this.anyListeners = next;
@@ -182,13 +182,13 @@ export class EventBus {
   }
 }
 
-/** 订阅组：一次性退订一组监听（系统/界面生命周期） */
+/** Subscription group for bulk unsubscription across system/UI lifetimes. */
 export class EventScope {
   private bus: EventBus;
   private subs: Unsubscribe[] = [];
   private disposed = false;
 
-  /** 传 lifetime 时，生命周期销毁会自动退订所有监听 */
+  /** When a lifetime is supplied, its disposal unsubscribes all listeners. */
   constructor(bus: EventBus, lifetime?: { onDispose: (fn: () => void) => unknown }) {
     this.bus = bus;
     lifetime?.onDispose(() => this.dispose());

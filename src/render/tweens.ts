@@ -2,7 +2,7 @@ import type { Entity } from "../core/ecs/index.ts";
 
 type Tween = { e: Entity; from: number; to: number; t: number; dur: number };
 
-/** 极简缩放补间：出场弹一下、受击压一下。只作用于表现，不碰逻辑 */
+/** Minimal scale tween for spawn bounce/hit squash; affects presentation only, not gameplay. */
 export class Tweens {
   private list: Tween[] = [];
   private active = new Map<Entity, number>();

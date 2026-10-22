@@ -1,6 +1,6 @@
 /**
- * 种子化随机（mulberry32）。
- * 纯算法，不含任何游戏语义：地图生成、粒子、镜头抖动共用。
+ * Seeded randomness (mulberry32).
+ * Pure algorithm with no game semantics, usable for maps, particles and camera shake.
  */
 export type Rng = {
   next: () => number;

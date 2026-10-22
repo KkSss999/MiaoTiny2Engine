@@ -3,15 +3,15 @@ import { makeRng } from "../core/kernel/index.ts";
 
 export type EmitOptions = {
   color: number;
-  /** 初速度（像素/秒） */
+  /** Initial velocity in pixels/second. */
   speed?: number;
   size?: number;
   life?: number;
-  /** 重力（像素/秒²），负数向上飘 */
+  /** Gravity in pixels/second squared; negative values rise. */
   gravity?: number;
-  /** 速度衰减系数，每秒 */
+  /** Velocity decay coefficient per second. */
   drag?: number;
-  /** 加法混合，适合火花/等离子 */
+  /** Additive blending for sparks/plasma. */
   additive?: boolean;
 };
 
@@ -29,10 +29,10 @@ type Particle = {
 
 
 /**
- * 粒子：纹理 + 对象池的 Sprite。
+ * Particles: textured, pooled Sprites.
  *
- * 之前是一个 Graphics 每帧重建所有矩形几何；现在复用同一张纹理的 Sprite，
- * 由批处理合并成极少几次 draw call，并且支持重力/阻力/加法混合。
+ * Previously Graphics rebuilt rectangle geometry each frame; Sprites now share one texture
+ * and batch into few draw calls, with gravity, drag and additive blending.
  */
 export class Particles {
   readonly view = new Container();

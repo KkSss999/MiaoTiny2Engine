@@ -11,8 +11,8 @@ export interface QueryChunk {
 }
 
 /**
- * 查询：按组件签名匹配 archetype，并缓存匹配结果。
- * 只有新建 archetype 时才会重建（版本号比对）。
+ * Match archetypes by component signature and cache matches.
+ * Rebuild only when new archetypes appear, using a version check.
  */
 export class Query<T extends ComponentType<unknown>[]> {
   private world: World;
@@ -47,7 +47,7 @@ export class Query<T extends ComponentType<unknown>[]> {
     return n;
   }
 
-  /** 命中实体的快照（会分配数组，热路径请用 forEach / chunks） */
+  /** Snapshot matching entities; allocates an array, so use forEach/chunks in hot paths. */
   collect(): Entity[] {
     const out: Entity[] = [];
     for (const a of this.archetypes) out.push(...a.entities);
@@ -70,7 +70,7 @@ export class Query<T extends ComponentType<unknown>[]> {
     }
   }
 
-  /** 零分配遍历：自己按下标读列，适合每帧跑的移动/碰撞系统 */
+  /** Allocation-free iteration: index columns directly for per-frame movement/collision systems. */
   *chunks(): IterableIterator<QueryChunk> {
     for (const arch of this.archetypes) {
       const cols = this.required.map((t) => arch.columns[arch.indexOf(t.id)]);

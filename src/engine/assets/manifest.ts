@@ -1,14 +1,14 @@
 /**
- * 资源清单：**纯数据**，不含任何渲染代码。
+ * Asset manifest: plain data without rendering code.
  *
- * 目的：让"有哪些资源、缺不缺图"能脱离 pixi 被检查（编辑器、CI、工具）。
- * 占位图不在这里——那是表现层的开发兜底（render/placeholders.ts）。
+ * Allows tools, CI and editors to inspect assets/missing images without Pixi.
+ * Placeholder images belong to presentation-layer development fallbacks, not this manifest.
  */
 export type SpriteEntry = {
   id: string;
-  /** 有美术资源时填路径；为空则用表现层占位图 */
+  /** Image path if available; empty entries may use presentation-layer placeholders. */
   image?: string | null;
-  /** 设计尺寸（像素），用于编辑器预览与缺图检查 */
+  /** Design dimensions in pixels, for previews and missing-image checks. */
   size?: [number, number];
 };
 

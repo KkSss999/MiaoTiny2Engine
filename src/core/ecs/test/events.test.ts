@@ -6,7 +6,7 @@ import { World, defineComponent, ENTITY_SCHEMA, componentSchema, type Change } f
 const P = defineComponent("ev.Position", () => ({ x: 0 }));
 const H = defineComponent("ev.Health", () => 100);
 
-test("统一通道：实体创建 / 销毁", () => {
+test("shared channel: entity creation / destruction", () => {
   const w = new World();
   const changes: Change[] = [];
   w.bus.on(DataChanged, (c) => changes.push(c));
@@ -22,7 +22,7 @@ test("统一通道：实体创建 / 销毁", () => {
   assert.equal(changes[1].key, a);
 });
 
-test("统一通道：组件 create / update / delete 都是同一种记录", () => {
+test("shared channel: component create / update / delete use one record type", () => {
   const w = new World();
   const changes: Change[] = [];
   w.bus.on(DataChanged, (c) => changes.push(c));
@@ -46,7 +46,7 @@ test("统一通道：组件 create / update / delete 都是同一种记录", () 
   assert.deepEqual(changes[3].before, { x: 2 });
 });
 
-test("set() 也产生 update 记录", () => {
+test("set() also produces an update record", () => {
   const w = new World();
   const e = w.spawn();
   w.add(e, H, 100);
@@ -59,7 +59,7 @@ test("set() 也产生 update 记录", () => {
   assert.equal(changes[0].after, 42);
 });
 
-test("onAdd / onRemove 只是这条通道的过滤视图", () => {
+test("onAdd / onRemove are filtered views of the channel", () => {
   const w = new World();
   const log: string[] = [];
   w.onAdd(P, (_e, v) => log.push(`add:${v.x}`));
@@ -71,7 +71,7 @@ test("onAdd / onRemove 只是这条通道的过滤视图", () => {
   assert.deepEqual(log, ["add:7", "remove:7"]);
 });
 
-test("onEntity：实体生命周期的便捷订阅", () => {
+test("onEntity: convenient entity lifecycle subscription", () => {
   const w = new World();
   const log: string[] = [];
   w.onEntity((c) => log.push(`${c.type}:${c.entity}`));
@@ -80,7 +80,7 @@ test("onEntity：实体生命周期的便捷订阅", () => {
   assert.deepEqual(log, [`create:${e}`, `delete:${e}`]);
 });
 
-test("DB 表变更与 ECS 变更落在同一条通道（真正的统一）", () => {
+test("DB table and ECS changes use the same shared channel", () => {
   const w = new World();
   const store = new Store(defineSchema("unified.weapon", { id: s.string().key(), damage: s.number() }));
   store.bind(w.bus);
@@ -101,7 +101,7 @@ test("DB 表变更与 ECS 变更落在同一条通道（真正的统一）", () 
   ]);
 });
 
-test("没有订阅者时不产生记录（hasListeners 短路）", () => {
+test("no records without subscribers (hasListeners short-circuit)", () => {
   const w = new World();
   let calls = 0;
   const off = w.bus.on(DataChanged, () => calls++);

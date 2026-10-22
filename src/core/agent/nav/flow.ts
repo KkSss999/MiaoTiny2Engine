@@ -1,13 +1,13 @@
-/** 与房间墙体重合的最小矩形描述 */
+/** Minimal rectangle description matching room walls. */
 export type NavRect = { x: number; y: number; w: number; h: number };
 
 /**
- * 房间内导航场：
- * - 按格子标记可走性（墙体按怪物体型膨胀）
- * - 从玩家所在格做一次广度优先，得到"离玩家多远"
- * - 怪物查自己格子的梯度方向即可绕过障碍
+ * Room navigation field:
+ * - Mark walkable cells, expanding walls by the enemy body size.
+ * - Run BFS from the player cell to calculate distance to the player.
+ * - Enemies follow the gradient at their cell to navigate around obstacles.
  *
- * 一帧最多算一次，所有怪共享。
+ * Compute at most once per frame and share across enemies.
  */
 export type NavGrid = {
   cell: number;
@@ -61,12 +61,12 @@ export const cellYOf = (nav: NavGrid, y: number): number =>
 export const cellIndexOf = (nav: NavGrid, x: number, y: number): number => cellYOf(nav, y) * nav.cols + cellXOf(nav, x);
 
 /**
- * 从起点格做广度优先，写入 dist。
+ * Run BFS from the start cell and write distances into dist.
  *
- * 注意：这里用"每步 1"的均一代价，而不是 10/14 的加权。
- * 加权版本需要允许"更短路径把格子重新入队"，一次计算可能入队
- * 远超格子数（队列定长会越界成 NaN，随后 NaN 比较恒为 true，
- * 变成死循环直接卡死页面）。均一 BFS 保证每格最多入队一次。
+ * Use uniform cost 1 per step, rather than weighted costs 10/14.
+ * A weighted version must requeue cells when a shorter path appears and may enqueue
+ * far more entries than cells. A fixed queue can overflow into NaN; subsequent comparisons
+ * can then loop forever and freeze the page. Uniform BFS enqueues each cell at most once.
  */
 export function computeFlow(nav: NavGrid, startX: number, startY: number): void {
   nav.dist.fill(-1);
@@ -76,7 +76,7 @@ export function computeFlow(nav: NavGrid, startX: number, startY: number): void 
   nav.startCell = start;
   nav.version += 1;
 
-  // 起点被墙压住时，从附近第一个可走格出发
+  // If the start is blocked, use the first nearby walkable cell.
   let from = start;
   if (nav.blocked[start]) {
     let best = -1;
@@ -121,8 +121,8 @@ export function computeFlow(nav: NavGrid, startX: number, startY: number): void 
         if (nx < 0 || ny < 0 || nx >= nav.cols || ny >= nav.rows) continue;
         const ni = ny * nav.cols + nx;
         if (nav.blocked[ni]) continue;
-        if (nav.dist[ni] !== -1) continue; // 已访问过，绝不重复入队
-        // 斜走不允许切墙角
+        if (nav.dist[ni] !== -1) continue; // Already visited; never enqueue twice.
+        // Diagonal movement must not cut wall corners.
         if (dx !== 0 && dy !== 0 && (nav.blocked[y * nav.cols + nx] || nav.blocked[ny * nav.cols + x])) continue;
         nav.dist[ni] = nd;
         if (tail < capacity) queue[tail++] = ni;
@@ -132,9 +132,9 @@ export function computeFlow(nav: NavGrid, startX: number, startY: number): void 
 }
 
 /**
- * 朝向下一格中心的方向。
- * 注意：方向是从怪物真实位置算出来的，不是格子中心——
- * 否则贴墙时会给出一条指向墙里的方向。
+ * Direction toward the center of the next cell.
+ * Calculate from the actual enemy position, not the current cell center;
+ * otherwise movement near walls can point into a wall.
  */
 export function flowDir(nav: NavGrid, x: number, y: number): { x: number; y: number } | null {
   const cx = cellXOf(nav, x);
@@ -144,7 +144,7 @@ export function flowDir(nav: NavGrid, x: number, y: number): { x: number; y: num
   let curY = cy;
   let cur = cy * nav.cols + cx;
 
-  // 自己所在格不可用时（贴进膨胀区），先在 3x3 里找最近的可用格
+  // If the current cell is blocked by expanded walls, find the nearest usable cell in a 3x3 area.
   if (nav.blocked[cur] || nav.dist[cur] < 0) {
     let best = -1;
     let bestScore = Number.MAX_SAFE_INTEGER;
@@ -168,7 +168,7 @@ export function flowDir(nav: NavGrid, x: number, y: number): { x: number; y: num
     cur = best;
   }
 
-  // 从当前格挑 dist 最小的邻居作为下一格
+  // Choose the neighboring cell with the smallest dist as the next cell.
   let lowest = nav.dist[cur];
   let nextX = curX;
   let nextY = curY;

@@ -6,7 +6,7 @@ const Hit = defineEvent<{ dmg: number; target: string }>("test.Hit");
 const Kill = defineEvent<{ id: string }>("test.Kill");
 const Tick = defineEvent<number>("test.Tick");
 
-test("emit：同步派发到监听器", () => {
+test("emit: synchronously dispatch to listeners", () => {
   const bus = new EventBus();
   const got: number[] = [];
   bus.on(Hit, (e) => got.push(e.dmg));
@@ -15,14 +15,14 @@ test("emit：同步派发到监听器", () => {
   assert.deepEqual(got, [7, 9]);
 });
 
-test("emit 返回是否有监听器", () => {
+test("emit returns whether listeners exist", () => {
   const bus = new EventBus();
   assert.equal(bus.emit(Tick, 1), false);
   bus.on(Tick, () => {});
   assert.equal(bus.emit(Tick, 1), true);
 });
 
-test("退订：返回的函数可取消订阅", () => {
+test("unsubscribe: the returned function cancels the subscription", () => {
   const bus = new EventBus();
   const got: number[] = [];
   const off = bus.on(Tick, (v) => got.push(v));
@@ -33,7 +33,7 @@ test("退订：返回的函数可取消订阅", () => {
   assert.equal(bus.hasListeners(Tick), false);
 });
 
-test("once：只触发一次（且重入也只触发一次）", () => {
+test("once: invoke once, including reentrant dispatch", () => {
   const bus = new EventBus();
   let count = 0;
   bus.once(Tick, () => {
@@ -45,7 +45,7 @@ test("once：只触发一次（且重入也只触发一次）", () => {
   assert.equal(count, 1);
 });
 
-test("priority：数值大的先跑，同优先级按订阅顺序", () => {
+test("priority: higher values first; ties use subscription order", () => {
   const bus = new EventBus();
   const order: string[] = [];
   bus.on(Tick, () => order.push("normal-1"));
@@ -56,7 +56,7 @@ test("priority：数值大的先跑，同优先级按订阅顺序", () => {
   assert.deepEqual(order, ["high", "normal-1", "normal-2", "low"]);
 });
 
-test("post + drain：FIFO 派发，pending 归零", () => {
+test("post + drain: FIFO dispatch clears pending events", () => {
   const bus = new EventBus();
   const got: number[] = [];
   bus.on(Tick, (v) => got.push(v));
@@ -64,14 +64,14 @@ test("post + drain：FIFO 派发，pending 归零", () => {
   bus.post(Tick, 2);
   bus.post(Tick, 3);
   assert.equal(bus.pending, 3);
-  assert.deepEqual(got, [], "drain 之前不派发");
+  assert.deepEqual(got, [], "no dispatch before drain");
   const n = bus.drain();
   assert.equal(n, 3);
   assert.deepEqual(got, [1, 2, 3]);
   assert.equal(bus.pending, 0);
 });
 
-test("drain：派发中 post 的事件进入下一轮", () => {
+test("drain: events posted during dispatch enter the next pass", () => {
   const bus = new EventBus();
   const got: number[] = [];
   bus.on(Tick, (v) => {
@@ -83,7 +83,7 @@ test("drain：派发中 post 的事件进入下一轮", () => {
   assert.deepEqual(got, [1, 2, 3]);
 });
 
-test("drain：maxPasses 防止无限连锁", () => {
+test("drain: maxPasses prevents infinite chains", () => {
   const bus = new EventBus();
   let fired = 0;
   bus.on(Tick, () => {
@@ -95,7 +95,7 @@ test("drain：maxPasses 防止无限连锁", () => {
   assert.equal(fired, 5);
 });
 
-test("派发过程中退订：本轮不再调用被退订的监听器", () => {
+test("unsubscribe during dispatch: removed listeners do not run again in this pass", () => {
   const bus = new EventBus();
   const order: string[] = [];
   const off2 = bus.on(Tick, () => order.push("second"), { priority: 0 });
@@ -115,7 +115,7 @@ test("派发过程中退订：本轮不再调用被退订的监听器", () => {
   assert.deepEqual(order, ["first"]);
 });
 
-test("派发过程中新增订阅：本轮不触发，下一轮生效", () => {
+test("subscribe during dispatch: new listeners run starting with the next pass", () => {
   const bus = new EventBus();
   const order: string[] = [];
   let added = false;
@@ -127,12 +127,12 @@ test("派发过程中新增订阅：本轮不触发，下一轮生效", () => {
     }
   });
   bus.emit(Tick, 0);
-  assert.deepEqual(order, ["a"], "快照语义：本轮看不到新监听器");
+  assert.deepEqual(order, ["a"], "snapshot semantics: new listeners are invisible in this pass");
   bus.emit(Tick, 0);
   assert.deepEqual(order, ["a", "a", "late"]);
 });
 
-test("onAny：能看到所有事件（调试用）", () => {
+test("onAny: observe all events for debugging", () => {
   const bus = new EventBus();
   const seen: string[] = [];
   bus.onAny((token, payload) => seen.push(`${token.name}:${JSON.stringify(payload)}`));
@@ -141,7 +141,7 @@ test("onAny：能看到所有事件（调试用）", () => {
   assert.deepEqual(seen, ['test.Hit:{"dmg":1,"target":"x"}', 'test.Kill:{"id":"e1"}']);
 });
 
-test("EventScope：批量退订", () => {
+test("EventScope: bulk unsubscribe", () => {
   const bus = new EventBus();
   const got: string[] = [];
   const scope = new EventScope(bus);
@@ -155,7 +155,7 @@ test("EventScope：批量退订", () => {
   assert.deepEqual(got, ["a", "b"]);
 });
 
-test("off：按函数引用退订", () => {
+test("off: unsubscribe by function reference", () => {
   const bus = new EventBus();
   const fn = () => {};
   bus.on(Tick, fn);
@@ -164,13 +164,13 @@ test("off：按函数引用退订", () => {
   assert.equal(bus.hasListeners(Tick), false);
 });
 
-test("defineEvent：同名返回同一个 token", () => {
+test("defineEvent: the same name returns the same token", () => {
   const A = defineEvent<number>("test.Same");
   const B = defineEvent<number>("test.Same");
   assert.equal(A.id, B.id);
 });
 
-test("大量监听器 + 派发不炸", () => {
+test("many listeners and dispatch remain functional", () => {
   const bus = new EventBus();
   let n = 0;
   for (let i = 0; i < 1000; i++) bus.on(Tick, () => n++);

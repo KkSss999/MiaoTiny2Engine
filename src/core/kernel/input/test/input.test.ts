@@ -2,32 +2,32 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { InputState } from "../index.ts";
 
-test("按下会记录按住与单次触发", () => {
+test("press records held state and a one-shot action", () => {
   const input = new InputState();
   input.press("KeyE");
 
   assert.equal(input.isDown("KeyE"), true);
   assert.equal(input.consume("KeyE"), true);
-  assert.equal(input.consume("KeyE"), false, "同一次按下只能消费一次");
-  assert.equal(input.isDown("KeyE"), true, "消费不影响按住状态");
+  assert.equal(input.consume("KeyE"), false, "each press can be consumed once");
+  assert.equal(input.isDown("KeyE"), true, "consumption does not affect held state");
 });
 
-test("键盘重复不会重复触发单次动作", () => {
+test("key repeat does not retrigger one-shot actions", () => {
   const input = new InputState();
   input.press("Space");
   input.consume("Space");
-  input.press("Space", true); // 系统重复
+  input.press("Space", true); // OS key repeat
   assert.equal(input.consume("Space"), false);
 });
 
-test("松开后不再算按住", () => {
+test("release clears held state", () => {
   const input = new InputState();
   input.press("KeyW");
   input.release("KeyW");
   assert.equal(input.isDown("KeyW"), false);
 });
 
-test("clearFrame 只清单次触发，保留按住", () => {
+test("clearFrame clears one-shot presses but retains held state", () => {
   const input = new InputState();
   input.press("KeyW");
   input.press("KeyE");
@@ -37,7 +37,7 @@ test("clearFrame 只清单次触发，保留按住", () => {
   assert.equal(input.consume("KeyE"), false);
 });
 
-test("reset 清空一切（失焦场景）", () => {
+test("reset clears all state for focus loss", () => {
   const input = new InputState();
   input.press("KeyW");
   input.pointerDown(10, 20);
@@ -48,7 +48,7 @@ test("reset 清空一切（失焦场景）", () => {
   assert.equal(input.consume("KeyW"), false);
 });
 
-test("鼠标位置与开火状态", () => {
+test("mouse position and firing state", () => {
   const input = new InputState();
   input.pointerDown(120, 240);
   assert.equal(input.down, true);

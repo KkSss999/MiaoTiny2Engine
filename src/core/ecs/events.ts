@@ -1,4 +1,4 @@
-/** 类型化事件通道：push 进队，read/drain 消费 */
+/** Typed event channel: push queues events, read/drain consume them. */
 export class EventChannel<T> {
   private queue: T[] = [];
 

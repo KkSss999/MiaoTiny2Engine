@@ -5,7 +5,7 @@ import { World, defineComponent } from "../index.ts";
 const P = defineComponent("scope.P", () => ({ x: 0 }));
 const Tag = defineComponent("scope.Tag", () => ({}));
 
-test("scope：spawn 的实体归组，dispose 全灭", () => {
+test("scope: spawned entities join the group; dispose destroys all", () => {
   const w = new World();
   const scope = w.createScope();
   const a = scope.spawn(P);
@@ -20,7 +20,7 @@ test("scope：spawn 的实体归组，dispose 全灭", () => {
   assert.equal(scope.size, 0);
 });
 
-test("scope：单独销毁的实体会自动从组里剔除", () => {
+test("scope: individually destroyed entities leave the group automatically", () => {
   const w = new World();
   const scope = w.createScope();
   const a = scope.spawn(P);
@@ -28,18 +28,18 @@ test("scope：单独销毁的实体会自动从组里剔除", () => {
   assert.equal(scope.size, 2);
 
   w.despawn(a);
-  assert.equal(scope.size, 1, "不需要手动从组里删");
+  assert.equal(scope.size, 1, "no manual removal from the group is needed");
 });
 
-test("scope：销毁后再 spawn 会报错", () => {
+test("scope: spawning after disposal throws", () => {
   const w = new World();
   const scope = w.createScope();
   scope.dispose();
-  assert.throws(() => scope.spawn(P), /已销毁/);
+  assert.throws(() => scope.spawn(P), /is disposed/);
   assert.equal(scope.isDisposed, true);
 });
 
-test("scope：dispose 幂等", () => {
+test("scope: dispose is idempotent", () => {
   const w = new World();
   const scope = w.createScope();
   scope.spawn(P);
@@ -48,7 +48,7 @@ test("scope：dispose 幂等", () => {
   assert.equal(w.entityCount, 0);
 });
 
-test("scope：adopt 外部创建的实体", () => {
+test("scope: adopt externally created entities", () => {
   const w = new World();
   const outside = w.spawn(P);
   const scope = w.createScope();
@@ -58,7 +58,7 @@ test("scope：adopt 外部创建的实体", () => {
   assert.equal(w.isAlive(outside), false);
 });
 
-test("scope：作用域 lifetime 可以挂其它资源（资产、订阅）", () => {
+test("scope: lifetime can own other resources and subscriptions", () => {
   const w = new World();
   const scope = w.createScope();
   let released = 0;
@@ -68,7 +68,7 @@ test("scope：作用域 lifetime 可以挂其它资源（资产、订阅）", ()
   assert.equal(released, 1);
 });
 
-test("scope：父作用域销毁级联子作用域", () => {
+test("scope: parent disposal cascades to child scopes", () => {
   const w = new World();
   const room = w.createScope();
   const fx = w.createScope(room.lifetime);
@@ -77,10 +77,10 @@ test("scope：父作用域销毁级联子作用域", () => {
 
   room.dispose();
   assert.equal(w.isAlive(e1), false);
-  assert.equal(w.isAlive(e2), false, "子作用域的实体一起死");
+  assert.equal(w.isAlive(e2), false, "child-scope entities are destroyed too");
 });
 
-test("scope：换房模拟——旧房实体全清、新房从零开始", () => {
+test("scope: changing rooms clears old entities and starts the next room fresh", () => {
   const w = new World();
   const roomA = w.createScope();
   roomA.spawn(P);

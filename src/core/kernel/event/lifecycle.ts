@@ -1,12 +1,12 @@
 export type DisposeFn = () => void;
 
 /**
- * 生命周期原语：谁拥有谁、什么时候销毁、销毁时连带什么。
+ * Lifetime primitives: ownership, disposal timing and cascading cleanup.
  *
- * 这是整个栈最底层的"所有权树"：
- * - World 持有 Lifetime，实体/系统/订阅都挂在它下面
- * - 父节点 dispose 会级联销毁全部子节点
- * - 所有需要"跟着一起死"的东西（事件订阅、渲染对象、DOM 监听、定时器）都注册 onDispose
+ * The ownership tree at the base of the stack:
+ * - World owns a Lifetime with entities, systems and subscriptions beneath it.
+ * - Parent disposal cascades to all children.
+ * - Register dependent event/render/DOM/timer cleanup through onDispose.
  */
 export class Lifetime {
   private state: "created" | "active" | "disposed" = "created";
@@ -32,7 +32,7 @@ export class Lifetime {
     return this;
   }
 
-  /** 注册销毁回调；如果已经销毁，立即执行（避免"注册在销毁之后"的泄漏） */
+  /** Register cleanup; run immediately if already disposed to avoid late-registration leaks. */
   onDispose(fn: DisposeFn): DisposeFn {
     if (this.state === "disposed") {
       fn();
@@ -45,13 +45,13 @@ export class Lifetime {
     };
   }
 
-  /** 创建子生命周期，自动挂在当前节点下 */
+  /** Create a child lifetime attached to this node. */
   fork(): Lifetime {
     return new Lifetime(this);
   }
 
   adopt(child: Lifetime): void {
-    if (child === this) throw new Error("Lifetime 不能收养自己");
+    if (child === this) throw new Error("Lifetime cannot adopt itself");
     if (this.disposed) {
       child.dispose();
       return;
@@ -65,7 +65,7 @@ export class Lifetime {
     this.children.add(child);
   }
 
-  /** 级联销毁：先子后己，回调按注册的逆序执行 */
+  /** Dispose children before self; run callbacks in reverse registration order. */
   dispose(): void {
     if (this.state === "disposed") return;
     this.state = "disposed";
@@ -77,7 +77,7 @@ export class Lifetime {
       try {
         hooks[i]();
       } catch (error) {
-        console.error("[lifetime] dispose 回调抛错", error);
+        console.error("[lifetime] dispose callback threw", error);
       }
     }
     if (this.owner) {

@@ -19,10 +19,10 @@ export type LoadResult =
 export type ImportOptions = { allowUnknownTables?: boolean };
 
 /**
- * 数据库：注册表 + 版本化快照。
+ * Database: table registry and versioned snapshots.
  *
- * - 内容表（武器/词条/房间模板）启动时 seed → schema 校验，坏数据立刻炸
- * - 存档表走 save/load，带版本迁移
+ * - Seed content tables (weapons/modifiers/room templates) with schema validation; invalid data throws.
+ * - Persistent tables use save/load with version migrations.
  */
 export class Database {
   version = 1;
@@ -31,14 +31,14 @@ export class Database {
   private migrations: Migration[] = [];
 
   register<S extends Shape>(table: Table<S>): Table<S> {
-    if (this.tables.has(table.name)) throw new Error(`表已注册：${table.name}`);
+    if (this.tables.has(table.name)) throw new Error(`Table already registered: ${table.name}`);
     this.tables.set(table.name, table as unknown as Table<Shape>);
     return table;
   }
 
   table<T>(name: string): Table<T & Shape> {
     const table = this.tables.get(name);
-    if (!table) throw new Error(`表未注册：${name}`);
+    if (!table) throw new Error(`Table not registered: ${name}`);
     return table as unknown as Table<T & Shape>;
   }
 
@@ -57,10 +57,10 @@ export class Database {
     return { version: this.version, tables };
   }
 
-  /** 内容表初始化：每行都过 schema，任何一条不合格都会抛 ValidationError */
+  /** Seed content tables; validate each row against its schema and throw ValidationError on failure. */
   seed(name: string, rows: unknown[]): number {
     const table = this.tables.get(name);
-    if (!table) throw new Error(`表未注册：${name}`);
+    if (!table) throw new Error(`Table not registered: ${name}`);
     let n = 0;
     for (const row of rows) {
       table.insert(row as never);
@@ -76,16 +76,16 @@ export class Database {
     let migrated = 0;
     while (current.version < this.version) {
       const migration = this.migrations.find((m) => m.from === current.version);
-      if (!migration) throw new Error(`缺少从 v${current.version} 升级的迁移`);
+      if (!migration) throw new Error(`Missing migration from v${current.version}`);
       current = validateSnapshot(migration.migrate(structuredClone(current)), this.version);
       migrated++;
-      if (current.version <= migration.from) throw new Error(`迁移 v${migration.from} 没有推进版本号`);
+      if (current.version <= migration.from) throw new Error(`Migration from v${migration.from} did not advance the version`);
     }
 
     for (const name of Object.keys(current.tables)) {
       if (!this.tables.has(name)) {
         if (options.allowUnknownTables) continue;
-        throw new Error(`快照里有未注册的表：${name}`);
+        throw new Error(`Snapshot contains unregistered table: ${name}`);
       }
     }
 
@@ -114,14 +114,14 @@ export class Database {
     try {
       raw = await adapter.read(key);
     } catch (error) {
-      return { ok: false, error: `读取失败：${(error as Error).message}` };
+      return { ok: false, error: `Read failed: ${(error as Error).message}` };
     }
-    if (raw === null) return { ok: false, error: "没有存档" };
+    if (raw === null) return { ok: false, error: "No save found" };
     let parsed: unknown;
     try {
       parsed = JSON.parse(raw);
     } catch (error) {
-      return { ok: false, error: `存档不是合法 JSON：${(error as Error).message}` };
+      return { ok: false, error: `Save is not valid JSON: ${(error as Error).message}` };
     }
     try {
       const migrated = this.import(parsed);
@@ -142,13 +142,13 @@ export class ImportNotificationError extends AggregateError {
 }
 
 function validateSnapshot(value: unknown, version: number): Snapshot {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) throw new Error("快照不是对象");
+  if (typeof value !== "object" || value === null || Array.isArray(value)) throw new Error("Snapshot is not an object");
   const snap = value as Snapshot;
-  if (!Number.isSafeInteger(snap.version) || snap.version < 1) throw new Error("快照缺少合法 version");
-  if (snap.version > version) throw new Error(`存档版本 ${snap.version} 高于当前 ${version}，拒绝读取`);
-  if (typeof snap.tables !== "object" || snap.tables === null || Array.isArray(snap.tables)) throw new Error("快照缺少 tables");
+  if (!Number.isSafeInteger(snap.version) || snap.version < 1) throw new Error("Snapshot lacks a valid version");
+  if (snap.version > version) throw new Error(`Save version ${snap.version} exceeds current version ${version}; refusing to load`);
+  if (typeof snap.tables !== "object" || snap.tables === null || Array.isArray(snap.tables)) throw new Error("Snapshot lacks tables");
   for (const [name, rows] of Object.entries(snap.tables)) {
-    if (!Array.isArray(rows)) throw new Error(`快照表 ${name} 必须是数组`);
+    if (!Array.isArray(rows)) throw new Error(`Snapshot table ${name} must be an array`);
   }
   return snap;
 }

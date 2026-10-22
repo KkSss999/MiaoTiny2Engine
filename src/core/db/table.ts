@@ -3,8 +3,8 @@ import { Store, type Change, type Key } from "./store.ts";
 import type { ObjectValue, Shape } from "./schema.ts";
 
 /**
- * Table = Store + 二级索引。
- * 索引由内部 CRUD hook 更新，先于外部订阅者；批量导入时一次重建。
+ * Table = Store + secondary indexes.
+ * Internal CRUD hooks update indexes before external subscribers; bulk imports rebuild them once.
  */
 export class Table<S extends Shape> extends Store<S> {
   private indexMap = new Map<string, Map<unknown, Set<Key>>>();
@@ -13,7 +13,7 @@ export class Table<S extends Shape> extends Store<S> {
     super(defineSchema(name, shape));
   }
 
-  // ---- 兼容旧 API 的别名 ----
+  // ---- Legacy API aliases ----
   insert(row: unknown): ObjectValue<S> {
     return this.create(row);
   }
@@ -41,7 +41,7 @@ export class Table<S extends Shape> extends Store<S> {
     return this.create(row);
   }
 
-  // ---- 二级索引 ----
+  // ---- Secondary indexes ----
   indexBy(field: string): this {
     if (field === this.keyName || this.indexMap.has(field)) return this;
     const index = new Map<unknown, Set<Key>>();

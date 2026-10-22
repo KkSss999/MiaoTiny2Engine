@@ -9,14 +9,14 @@ const Body = defineComponent(
   defineShape("shape.Body", { x: s.number(), y: s.number() }),
 );
 
-test("组件形状：未开启校验时不做检查", () => {
+test("component shapes: no checks when validation is disabled", () => {
   const w = new World();
   const e = w.spawn();
   w.add(e, Body, { x: 1, y: 2 });
   assert.deepEqual(w.require(e, Body), { x: 1, y: 2 });
 });
 
-test("组件形状：开启校验后，坏数据被 @gdd/db 拦住", () => {
+test("component shapes: @gdd/db rejects invalid data when validation is enabled", () => {
   const w = new World();
   w.validateComponents = true;
   const e = w.spawn();
@@ -24,11 +24,11 @@ test("组件形状：开启校验后，坏数据被 @gdd/db 拦住", () => {
   assert.deepEqual(w.require(e, Body), { x: 1, y: 2 });
 
   const e2 = w.spawn();
-  assert.throws(() => w.add(e2, Body, { x: "bad", y: 0 } as never), /校验失败|期望 number/);
+  assert.throws(() => w.add(e2, Body, { x: "bad", y: 0 } as never), /validation failed|Expected number/);
   assert.equal(w.has(e2, Body), false);
 });
 
-test("组件形状：缺字段会被补上默认值后校验", () => {
+test("component shapes: populate defaults before validating missing fields", () => {
   const w = new World();
   w.validateComponents = true;
   const e = w.spawn();

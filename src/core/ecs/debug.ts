@@ -4,10 +4,10 @@ import type { World } from "./world.ts";
 export type DebugFn = (...args: never[]) => unknown;
 
 /**
- * 调试命令注册表。
+ * Debug command registry.
  *
- * 分层原则：ECS 能自省的部分（实体/组件/计数）属于通用能力，放 core；
- * 具体游戏的命令（给武器、传送、开奖励）由游戏层自己注册。
+ * ECS introspection (entities/components/counts) belongs in core;
+ * game-specific commands (give weapon/teleport/rewards) are registered by the game.
  */
 export class DebugRegistry {
   private commands = new Map<string, { run: (...args: unknown[]) => unknown; help: string }>();
@@ -27,11 +27,11 @@ export class DebugRegistry {
 
   run(name: string, args: unknown[] = []): unknown {
     const cmd = this.commands.get(name);
-    if (!cmd) throw new Error(`没有调试命令：${name}`);
+    if (!cmd) throw new Error(`No debug command: ${name}`);
     return cmd.run(...args);
   }
 
-  /** 挂到全局对象上，命令按名字直接调用 */
+  /** Attach to a global object for direct invocation by command name. */
   install(target: Record<string, unknown>, key = "__dbg"): void {
     const api: Record<string, unknown> = {};
     for (const [name, cmd] of this.commands) {
@@ -42,7 +42,7 @@ export class DebugRegistry {
   }
 }
 
-/** 实体 → 组件名到值的映射 */
+/** Entity → component-name/value map. */
 export function inspectEntity(world: World, entity: Entity): Record<string, unknown> | null {
   const snapshot = world.snapshot(entity);
   if (!snapshot) return null;
@@ -51,7 +51,7 @@ export function inspectEntity(world: World, entity: Entity): Record<string, unkn
   return out;
 }
 
-/** 列出存活实体，可按组件名过滤 */
+/** List live entities, optionally filtering by component name. */
 export function listEntities(world: World, filter: string[] = []): { entity: Entity; components: string[] }[] {
   const out: { entity: Entity; components: string[] }[] = [];
   for (const entity of world.entities.aliveEntities()) {
@@ -64,7 +64,7 @@ export function listEntities(world: World, filter: string[] = []): { entity: Ent
   return out;
 }
 
-/** 每种组件挂了几个实例 */
+/** Count instances of each component. */
 export function countComponents(world: World): Record<string, number> {
   const out: Record<string, number> = {};
   for (const arch of world.allArchetypes) {

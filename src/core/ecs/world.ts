@@ -12,9 +12,9 @@ import { EntityScope } from "./scope.ts";
 export class World {
   readonly entities = new EntityAllocator();
   readonly commands: CommandBuffer;
-  /** 世界级事件总线：生命周期事件 + 游戏自定义事件共用一条 */
+  /** World event bus shared by lifecycle and custom game events. */
   readonly bus = new EventBus();
-  /** 世界根生命周期：实体 / 组件 / 订阅都挂在它下面 */
+  /** World root lifetime owning entities, components and subscriptions. */
   readonly lifetime = new Lifetime().activate();
 
   private archetypes: Archetype[] = [];
@@ -42,7 +42,7 @@ export class World {
     this.scopes.add(scope);
     return () => this.scopes.delete(scope);
   }
-  /** 开启后，带 shape 的组件在 add 时会被 @gdd/db 校验（开发期用） */
+  /** Enable development-time @gdd/db validation on add for components with shapes. */
   validateComponents = false;
 
   constructor() {
@@ -65,7 +65,7 @@ export class World {
     return this.entities.isAlive(e);
   }
 
-  /** 工具/调试用：列出实体上的全部组件（名字 + 值）。不是热路径。 */
+  /** List all entity components (names and values) for tools/debugging, not hot paths. */
   snapshot(e: Entity): { name: string; value: unknown }[] | null {
     if (!this.entities.isAlive(e)) return null;
     const idx = entityIndex(e);
@@ -124,16 +124,16 @@ export class World {
 
   require<T>(e: Entity, type: ComponentType<T>): T {
     const v = this.get(e, type);
-    if (v === undefined) throw new Error(`entity ${e} 缺少组件 ${type.name}`);
+    if (v === undefined) throw new Error(`entity ${e} missing component ${type.name}`);
     return v;
   }
 
   set<T>(e: Entity, type: ComponentType<T>, value: T): void {
     const idx = entityIndex(e);
     const arch = this.archOf[idx];
-    if (!arch || !this.entities.isAlive(e)) throw new Error(`entity ${e} 已销毁`);
+    if (!arch || !this.entities.isAlive(e)) throw new Error(`entity ${e} is disposed`);
     const col = arch.indexOf(type.id);
-    if (col < 0) throw new Error(`entity ${e} 缺少组件 ${type.name}`);
+    if (col < 0) throw new Error(`entity ${e} missing component ${type.name}`);
     const row = this.rowOf[idx];
     const before = arch.columns[col][row];
     arch.columns[col][row] = value;
@@ -143,7 +143,7 @@ export class World {
   add<T>(e: Entity, type: ComponentType<T>, value?: Partial<T> | T): void {
     const idx = entityIndex(e);
     const arch = this.archOf[idx];
-    if (!arch || !this.entities.isAlive(e)) throw new Error(`entity ${e} 已销毁`);
+    if (!arch || !this.entities.isAlive(e)) throw new Error(`entity ${e} is disposed`);
 
     const col = arch.indexOf(type.id);
     if (col >= 0) {
@@ -225,7 +225,7 @@ export class World {
 
   resource<T>(key: string | symbol): T {
     const v = this.resources.get(key);
-    if (v === undefined) throw new Error(`未注册 resource: ${String(key)}`);
+    if (v === undefined) throw new Error(`Unregistered resource: ${String(key)}`);
     return v as T;
   }
 
@@ -235,7 +235,7 @@ export class World {
 
   // ------------------------------------------------------------------ hooks
 
-  /** 组件出现：过滤统一变更通道得到，不是另一套机制 */
+  /** Component additions filtered from the shared change channel. */
   onAdd<T>(type: ComponentType<T>, fn: (e: Entity, value: T) => void): () => void {
     this.assertActive();
     const schema = componentSchema(type);
@@ -245,7 +245,7 @@ export class World {
     });
   }
 
-  /** 组件移除：同样来自统一变更通道 */
+  /** Component removals from the same shared change channel. */
   onRemove<T>(type: ComponentType<T>, fn: (e: Entity, value: T) => void): () => void {
     this.assertActive();
     const schema = componentSchema(type);
@@ -255,7 +255,7 @@ export class World {
     });
   }
 
-  /** 实体创建/销毁订阅（同一条通道） */
+  /** Subscribe to entity creation/destruction through the same channel. */
   onEntity(fn: (change: { type: "create" | "delete"; entity: Entity }) => void): () => void {
     this.assertActive();
     return this.bus.on(DataChanged, (change) => {
@@ -268,16 +268,16 @@ export class World {
     if (this.bus.hasListeners(DataChanged)) this.bus.emit(DataChanged, change);
   }
 
-  /** 创建一个实体分组（房间/关卡/场景用它管理生命周期） */
+  /** Create an entity group to manage room/level/scene lifetimes. */
   createScope(parent?: Lifetime): EntityScope {
     this.assertActive();
     return new EntityScope(this, parent);
   }
 
-  /** 实体生命周期：随实体销毁级联 */
+  /** Entity lifetime, disposed when the entity is destroyed. */
   entityLifetime(e: Entity): Lifetime {
     this.assertActive();
-    if (!this.entities.isAlive(e)) throw new Error(`entity ${e} 已销毁`);
+    if (!this.entities.isAlive(e)) throw new Error(`entity ${e} is disposed`);
     const existing = this.entityLifetimes.get(e);
     if (existing) return existing;
     const life = this.lifetime.fork();
@@ -285,10 +285,10 @@ export class World {
     return life;
   }
 
-  /** 某个组件的作用域：组件被移除或实体销毁时级联 */
+  /** Component scope, disposed on component removal or entity destruction. */
   componentLifetime<T>(e: Entity, type: ComponentType<T>): Lifetime {
     this.assertActive();
-    if (!this.has(e, type)) throw new Error(`entity ${e} 缺少组件 ${type.name}`);
+    if (!this.has(e, type)) throw new Error(`entity ${e} missing component ${type.name}`);
     let map = this.componentLifetimes.get(e);
     if (!map) {
       map = new Map();
@@ -301,7 +301,7 @@ export class World {
     return life;
   }
 
-  /** 销毁世界：级联销毁所有实体作用域和订阅 */
+  /** Dispose the world and all entity scopes/subscriptions. */
   dispose(): void {
     if (this.disposed) return;
     this.clear();

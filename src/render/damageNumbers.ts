@@ -13,12 +13,12 @@ const POOL_MAX = 64;
 const BASE_FONT = 15;
 
 /**
- * 伤害飘字。
+ * Floating damage numbers.
  *
- * 用 BitmapText 而不是 Text：飘字的内容每一下都在变，
- * Text 每次改字都要重画 canvas 并重新上传纹理，密集命中时会把
- * 主线程拖垮（这也是之前卡死的头号嫌疑）。BitmapText 改文字只
- * 重排四边形，颜色走实例 tint，不触发任何纹理重绘。
+ * Use BitmapText instead of Text for frequently changing numbers.
+ * Text redraws its canvas and uploads textures on every change; dense hits can
+ * stall the main thread, a leading suspect in earlier freezes. BitmapText only
+ * rearranges quads and uses instance tint without redrawing textures.
  */
 export class DamageNumbers {
   readonly root = new Container();

@@ -4,20 +4,20 @@ import { Popped, Pushed, Transitioned } from "./events.ts";
 export type StateId = string;
 
 /**
- * 状态机的全部运行时数据：纯数据，可以 JSON 序列化、放进 ECS 组件、存档。
- * 状态机本身不持有任何游戏对象。
+ * All FSM runtime data is plain data, suitable for JSON, ECS components and saves.
+ * The state machine holds no game objects.
  */
 export type MachineData<S extends StateId = StateId> = {
   state: S;
-  /** 在当前状态里待了多久（秒，由 dt 累加，不读时钟） */
+  /** Time in the current state, in seconds accumulated from dt without reading a clock. */
   time: number;
-  /** 被打断时压栈的旧状态 */
+  /** Previous states stacked on interruption. */
   stack: { state: S; time: number }[];
-  /** 本 tick 待消费的触发器 */
+  /** Triggers to consume in this tick. */
   triggers: string[];
 };
 
-/** 时长可以是固定值，也可以由上下文推出（不同怪的前摇不一样） */
+/** Durations may be fixed or context-derived, such as different enemy windups. */
 export type Duration<C> = number | ((ctx: C) => number);
 
 const resolveDuration = <C,>(value: Duration<C> | undefined, ctx: C): number =>
@@ -25,18 +25,18 @@ const resolveDuration = <C,>(value: Duration<C> | undefined, ctx: C): number =>
 
 export type Transition<C, S extends StateId> = {
   to: S;
-  /** 事件触发：本 tick fire 过这个触发器 */
+  /** Event condition: this trigger was fired in the current tick. */
   on?: string;
-  /** 每 tick 判定，必须无副作用 */
+  /** Evaluated each tick; must have no side effects. */
   when?: (ctx: C) => boolean;
-  /** 进入当前状态后经过多少秒 */
+  /** Seconds elapsed since entering the current state. */
   after?: Duration<C>;
-  /** 无视 minTime 强行转移 */
+  /** Force the transition regardless of minTime. */
   interrupt?: boolean;
 };
 
 export type StateDef<C, S extends StateId> = {
-  /** 必须停留的最短时间，期间只有 interrupt 转移能离开 */
+  /** Minimum residence time; only interrupt transitions can leave earlier. */
   minTime?: Duration<C>;
   enter?: (ctx: C) => void;
   exit?: (ctx: C) => void;
@@ -56,7 +56,7 @@ export function createMachine<C, S extends StateId>(def: MachineDef<C, S>): Mach
   return { state: def.initial, time: 0, stack: [], triggers: [] };
 }
 
-/** 投递触发器；本 tick 内有效，step 结束后清空 */
+/** Post a trigger for this tick; cleared after step. */
 export function fire<S extends StateId>(data: MachineData<S>, trigger: string): void {
   if (!data.triggers.includes(trigger)) data.triggers.push(trigger);
 }
@@ -66,9 +66,9 @@ export function is<S extends StateId>(data: MachineData<S>, state: S): boolean {
 }
 
 /**
- * 推进一帧。
- * 顺序：当前状态 update → time 累加 → 按声明顺序找第一条满足的转移 → 执行。
- * 触发器在 tick 结束时清空（事件只对当帧有效）。
+ * Advance one frame.
+ * Order: current-state update → accumulate time → first matching declared transition → execute.
+ * Triggers clear at tick end; events apply only to the current frame.
  */
 export function step<C, S extends StateId>(
   def: MachineDef<C, S>,
@@ -78,7 +78,7 @@ export function step<C, S extends StateId>(
   bus?: EventBus,
 ): StepResult<S> {
   const current = def.states[data.state];
-  if (!current) throw new Error(`机器 ${def.id} 没有状态 ${data.state}`);
+  if (!current) throw new Error(`Machine ${def.id} has no state ${data.state}`);
 
   current.update?.(ctx, dt);
   data.time += dt;
@@ -107,7 +107,7 @@ export function step<C, S extends StateId>(
   return result;
 }
 
-/** 打断当前状态，压栈后进入新状态 */
+/** Interrupt the current state, stack it and enter a new state. */
 export function push<C, S extends StateId>(
   def: MachineDef<C, S>,
   data: MachineData<S>,
@@ -124,7 +124,7 @@ export function push<C, S extends StateId>(
   if (bus) bus.emit(Pushed, { machine: def.id, from, to: state });
 }
 
-/** 恢复到压栈的状态（不重新触发 enter，语义是"继续"） */
+/** Resume the stacked state without invoking enter again. */
 export function pop<C, S extends StateId>(
   def: MachineDef<C, S>,
   data: MachineData<S>,
@@ -161,7 +161,7 @@ function applyTransition<C, S extends StateId>(
   data.state = to;
   data.time = 0;
   const next = def.states[to];
-  if (!next) throw new Error(`机器 ${def.id} 转移到了未定义状态 ${to}`);
+  if (!next) throw new Error(`Machine ${def.id} transitioned to undefined state ${to}`);
   next.enter?.(ctx);
   return { from, to };
 }

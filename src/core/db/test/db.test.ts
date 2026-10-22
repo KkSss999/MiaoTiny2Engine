@@ -5,7 +5,8 @@ import { EventBus } from "../../kernel/index.ts";
 
 // ---------------------------------------------------------------- schema
 
-test("schema：基础类型 + 约束", () => {
+// Non-English names and tags below intentionally exercise Unicode data preservation and indexing.
+test("schema: primitive types and constraints", () => {
   const shape = {
     id: s.string().key(),
     damage: s.number().min(0).max(100),
@@ -22,7 +23,7 @@ test("schema：基础类型 + 约束", () => {
   assert.deepEqual(parsed, { id: "a", damage: 10, name: "钉枪", kind: "gun", tags: ["工业", "远程"], enabled: true });
 });
 
-test("schema：越界 / 类型错 / 枚举错都会报出字段路径", () => {
+test("schema: range, type and enum errors report field paths", () => {
   const shape = { hp: s.number().int().min(0), kind: s.enumOf(["a", "b"] as const) };
   const issues: { path: string; message: string }[] = [];
   s.object(shape).run({ hp: -1, kind: "c" }, "", issues);
@@ -30,26 +31,26 @@ test("schema：越界 / 类型错 / 枚举错都会报出字段路径", () => {
   assert.deepEqual(issues.map((i) => i.path).sort(), ["hp", "kind"]);
 });
 
-test("schema：必填缺失 vs optional vs default", () => {
+test("schema: missing required fields versus optional and default", () => {
   const shape = { a: s.number(), b: s.number().optional(), c: s.number().default(7) };
   const issues: { path: string; message: string }[] = [];
   const missing = s.object(shape).run({}, "", issues);
   assert.equal(issues.length, 1);
   assert.equal(issues[0].path, "a");
-  assert.equal((missing as { c: number }).c, 7, "default 会被填上");
+  assert.equal((missing as { c: number }).c, 7, "default is populated");
 
   const ok = s.object(shape).run({ a: 1, b: 2 }, "", []);
   assert.deepEqual(ok, { a: 1, b: 2, c: 7 });
 });
 
-test("schema：未知字段会被拒绝（防止拼写错误静默丢失）", () => {
+test("schema: reject unknown fields to prevent silent typo loss", () => {
   const issues: { path: string; message: string }[] = [];
   s.object({ a: s.number() }).run({ a: 1, typo: 2 }, "", issues);
   assert.equal(issues.length, 1);
-  assert.match(issues[0].message, /未知字段/);
+  assert.match(issues[0].message, /Unknown field/);
 });
 
-test("schema：嵌套 object 与数组下标路径", () => {
+test("schema: nested object and array-index paths", () => {
   const shape = {
     hitbox: s.object({ r: s.number().min(0) }),
     list: s.array(s.object({ x: s.number() })),
@@ -59,15 +60,15 @@ test("schema：嵌套 object 与数组下标路径", () => {
   assert.deepEqual(issues.map((i) => i.path).sort(), ["hitbox.r", "list[1].x"]);
 });
 
-test("schema：refine 自定义约束", () => {
-  const even = s.number().refine((v) => v % 2 === 0, "必须是偶数");
+test("schema: custom refine constraints", () => {
+  const even = s.number().refine((v) => v % 2 === 0, "Must be even");
   const issues: { path: string; message: string }[] = [];
   even.run(3, "n", issues);
-  assert.equal(issues[0].message, "必须是偶数");
+  assert.equal(issues[0].message, "Must be even");
 });
 
-test("schema：没有 .key() 会直接报错", () => {
-  assert.throws(() => defineTable("bad", { id: s.string() }), /主键/);
+test("schema: missing .key() throws immediately", () => {
+  assert.throws(() => defineTable("bad", { id: s.string() }), /primary key/);
 });
 
 // ----------------------------------------------------------------- table
@@ -93,21 +94,21 @@ test("table：insert / get / update / remove", () => {
   assert.equal(t.size, 0);
 });
 
-test("table：主键重复 / 校验失败都会抛", () => {
+test("table: duplicate keys and validation failures throw", () => {
   const t = defineTable("w2", Weapon);
   t.insert({ id: "a", name: "A", damage: 1, tags: [] });
   assert.throws(() => t.insert({ id: "a", name: "B", damage: 1, tags: [] }), ValidationError);
   assert.throws(() => t.insert({ id: "b", name: "B", damage: -5, tags: [] }), /damage/);
 });
 
-test("table：update 会重新校验", () => {
+test("table: update validates again", () => {
   const t = defineTable("w3", Weapon);
   t.insert({ id: "a", name: "A", damage: 1, tags: [] });
   assert.throws(() => t.update("a", { damage: -1 }), /damage/);
-  assert.equal(t.get("a")?.damage, 1, "失败不应写入");
+  assert.equal(t.get("a")?.damage, 1, "failure must not write data");
 });
 
-test("table：二级索引（标量）", () => {
+test("table: secondary indexes for scalar fields", () => {
   const t = defineTable("w4", Weapon);
   t.indexBy("damage");
   t.insert({ id: "a", name: "A", damage: 5, tags: [] });
@@ -122,7 +123,7 @@ test("table：二级索引（标量）", () => {
   assert.equal(t.find("damage", 9).length, 2);
 });
 
-test("table：数组字段的多值索引", () => {
+test("table: multi-value indexes for array fields", () => {
   const t = defineTable("w5", Weapon);
   t.indexBy("tags");
   t.insert({ id: "a", name: "A", damage: 1, tags: ["火", "远程"] });
@@ -134,14 +135,14 @@ test("table：数组字段的多值索引", () => {
   assert.equal(t.find("tags", "冰").length, 1);
 });
 
-test("table：where / all 快照", () => {
+test("table: where / all snapshots", () => {
   const t = defineTable("w6", Weapon);
   for (let i = 0; i < 5; i++) t.insert({ id: `w${i}`, name: `W${i}`, damage: i, tags: [] });
   assert.equal(t.all().length, 5);
   assert.equal(t.where((r) => r.damage >= 3).length, 2);
   const snap = t.all();
   t.remove("w0");
-  assert.equal(snap.length, 5, "all() 返回的是快照");
+  assert.equal(snap.length, 5, "all() returns a snapshot");
 });
 
 // -------------------------------------------------------------- database
@@ -157,7 +158,7 @@ function makeDb() {
   return { db, weapons, meta };
 }
 
-test("db：seed 内容表并 export", () => {
+test("db: seed content tables and export", () => {
   const { db, weapons } = makeDb();
   const n = db.seed("weapons", [{ id: "a", name: "A", damage: 1, tags: [] }]);
   assert.equal(n, 1);
@@ -167,7 +168,7 @@ test("db：seed 内容表并 export", () => {
   assert.equal(weapons.size, 1);
 });
 
-test("db：import 往返一致", () => {
+test("db: import round trip", () => {
   const { db } = makeDb();
   db.seed("weapons", [{ id: "a", name: "A", damage: 1, tags: ["x"] }]);
   const snap = JSON.parse(JSON.stringify(db.export()));
@@ -177,14 +178,14 @@ test("db：import 往返一致", () => {
   assert.deepEqual(db2.export(), snap);
 });
 
-test("db：import 会拒绝未注册的表 / 过新版本 / 坏数据", () => {
+test("db: import rejects unregistered tables, newer versions and invalid data", () => {
   const { db } = makeDb();
-  assert.throws(() => db.import({ version: 1, tables: { nope: [] } }), /未注册/);
-  assert.throws(() => db.import({ version: 99, tables: {} }), /版本/);
+  assert.throws(() => db.import({ version: 1, tables: { nope: [] } }), /unregistered/);
+  assert.throws(() => db.import({ version: 99, tables: {} }), /version/);
   assert.throws(() => db.import({ version: 1, tables: { weapons: [{ id: "a" }] } }), /weapons/);
 });
 
-test("db：版本迁移从 v1 到 v2", () => {
+test("db: version migration from v1 to v2", () => {
   const { db } = makeDb();
   db.version = 2;
   db.addMigration({
@@ -203,13 +204,13 @@ test("db：版本迁移从 v1 到 v2", () => {
   assert.equal((db.export().tables.weapons[0] as { damage: number }).damage, 10);
 });
 
-test("db：缺迁移会明确报错", () => {
+test("db: missing migration produces an explicit error", () => {
   const { db } = makeDb();
   db.version = 3;
-  assert.throws(() => db.import({ version: 1, tables: {} }), /缺少从 v1/);
+  assert.throws(() => db.import({ version: 1, tables: {} }), /Missing migration from v1/);
 });
 
-test("db：save / load 走适配器", async () => {
+test("db: save / load use the adapter", async () => {
   const storage = new MemoryStorage();
   const { db } = makeDb();
   db.seed("weapons", [{ id: "a", name: "A", damage: 3, tags: [] }]);
@@ -221,7 +222,7 @@ test("db：save / load 走适配器", async () => {
   assert.equal(db2.table<{ id: string }>("weapons").find("id", "a").length, 1);
 });
 
-test("db：load 处理空档 / 坏 JSON", async () => {
+test("db: load handles missing saves and invalid JSON", async () => {
   const storage = new MemoryStorage();
   const { db } = makeDb();
   const empty = await db.load(storage, "none");
@@ -233,7 +234,7 @@ test("db：load 处理空档 / 坏 JSON", async () => {
   if (!broken.ok) assert.match(broken.error, /JSON/);
 });
 
-test("db：坏存档不会污染已有数据", async () => {
+test("db: invalid saves do not corrupt existing data", async () => {
   const storage = new MemoryStorage();
   const { db } = makeDb();
   db.seed("weapons", [{ id: "keep", name: "K", damage: 1, tags: [] }]);
@@ -243,7 +244,7 @@ test("db：坏存档不会污染已有数据", async () => {
   assert.equal(db.table<{ id: string }>("weapons").all().length, 1);
 });
 
-test("table 泛型：defineTable 推导出正确的行类型", () => {
+test("table generics: defineTable infers the correct row type", () => {
   const t: Table<typeof Weapon> = defineTable("typed", Weapon);
   t.insert({ id: "a", name: "A", damage: 1, tags: ["t"] });
   const row = t.require("a");
@@ -254,7 +255,7 @@ test("table 泛型：defineTable 推导出正确的行类型", () => {
 });
 // ------------------------------------------------------------- store / bus
 
-test("Store：变更广播 create / update / delete", () => {
+test("Store: broadcast create / update / delete changes", () => {
   const store = new Store(defineSchema("bus.probe", { id: s.string().key(), v: s.number() }));
   const seen: string[] = [];
   store.onChange((c) => seen.push(`${c.type}:${String(c.key)}`));
@@ -266,7 +267,7 @@ test("Store：变更广播 create / update / delete", () => {
   assert.deepEqual(seen, ["create:a", "update:a", "delete:a"]);
 });
 
-test("Store：update 变更里带 before / after", () => {
+test("Store: update changes include before / after", () => {
   const store = new Store(defineSchema("bus.probe2", { id: s.string().key(), v: s.number() }));
   store.create({ id: "a", v: 1 });
   let captured: Change | undefined;
@@ -278,7 +279,7 @@ test("Store：update 变更里带 before / after", () => {
   assert.equal((captured?.after as { v: number }).v, 9);
 });
 
-test("Store.bind：变更转发到事件总线（DB 消费 Event）", () => {
+test("Store.bind: forward changes to the event bus (DB integrates with Event)", () => {
   const bus = new EventBus();
   const store = new Store(defineSchema("bus.probe3", { id: s.string().key(), v: s.number() }));
   store.bind(bus);
@@ -292,7 +293,7 @@ test("Store.bind：变更转发到事件总线（DB 消费 Event）", () => {
   assert.deepEqual(got, ["bus.probe3:create", "bus.probe3:delete"]);
 });
 
-test("defineSchema：具名 schema 可复用、可校验、带默认值", () => {
+test("defineSchema: named schemas support reuse, validation and defaults", () => {
   const schema = defineSchema("content.weapon", {
     id: s.string().key(),
     damage: s.number().min(0),
@@ -306,7 +307,7 @@ test("defineSchema：具名 schema 可复用、可校验、带默认值", () => 
   assert.throws(() => schema.create({ id: "x", damage: -1 }), ValidationError);
 });
 
-test("Table 的二级索引由总线驱动", () => {
+test("Table secondary indexes are driven by the bus", () => {
   const t = defineTable("indexBus", { id: s.string().key(), tags: s.array(s.string()) });
   t.indexBy("tags");
   t.insert({ id: "a", tags: ["火"] });
@@ -330,7 +331,7 @@ test("import duplicate keys in a later table leaves every live table and index u
   assert.throws(() => db.import({ version: 1, tables: {
     weapons: [{ id: "new", name: "new", damage: 2, tags: ["new"] }],
     meta: [{ key: "same", value: 1 }, { key: "same", value: 2 }],
-  } }), /主键重复/);
+  } }), /Duplicate primary key/);
   assert.deepEqual(db.export(), before);
   assert.equal(weapons.find("tags", "keep").length, 1);
   assert.equal(changes, 0);
@@ -417,7 +418,7 @@ test("shape registration rejects incompatible aliases", () => {
 
 test("DB rejects nonprimitive primary keys before mutation", () => {
   const table = defineTable("invalid.key", { id: s.any().key() });
-  for (const id of [{}, [], NaN, Infinity, null]) assert.throws(() => table.insert({ id }), /主键/);
+  for (const id of [{}, [], NaN, Infinity, null]) assert.throws(() => table.insert({ id }), /Primary key/);
   assert.equal(table.size, 0);
 });
 
