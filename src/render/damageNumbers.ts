@@ -23,27 +23,32 @@ const BASE_FONT = 15;
 export class DamageNumbers {
   readonly root = new Container();
   private items: Item[] = [];
+  private random: () => number;
+  private disposed = false;
 
-  constructor(parent: Container) {
+  constructor(parent: Container, random: () => number = Math.random) {
+    this.random = random;
     parent.addChild(this.root);
   }
 
   spawn(x: number, y: number, value: number, color: number, scale = 1): void {
+    if (this.disposed) throw new Error("DamageNumbers are disposed");
     const item = this.take();
     item.text.text = String(Math.max(1, Math.round(value)));
     item.text.tint = color;
-    item.text.position.set(x + (Math.random() - 0.5) * 30, y + (Math.random() - 0.5) * 10);
+    item.text.position.set(x + (this.random() - 0.5) * 30, y + (this.random() - 0.5) * 10);
     item.text.alpha = 1;
     item.text.visible = true;
     item.text.scale.set(scale);
     item.scaleFrom = scale;
     item.life = 0.75;
     item.total = 0.75;
-    item.vx = (Math.random() - 0.5) * 80;
-    item.vy = -78 - Math.random() * 34;
+    item.vx = (this.random() - 0.5) * 80;
+    item.vy = -78 - this.random() * 34;
   }
 
   update(dt: number): void {
+    if (!Number.isFinite(dt) || dt < 0) throw new RangeError("Invalid text delta");
     for (const item of this.items) {
       if (item.life <= 0) continue;
       item.life -= dt;
@@ -66,6 +71,13 @@ export class DamageNumbers {
       item.life = 0;
       item.text.visible = false;
     }
+  }
+
+  dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.items = [];
+    this.root.destroy({ children: true });
   }
 
   private take(): Item {

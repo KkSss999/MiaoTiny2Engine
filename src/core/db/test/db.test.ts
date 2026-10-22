@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { s, Database, Table, defineTable, MemoryStorage, ValidationError, Store, StoreChanged, defineSchema, getSchema, schemaNames, type Change } from "../index.ts";
-import { EventBus } from "#core/kernel/index.ts";
+import { s, Database, Table, defineTable, MemoryStorage, ValidationError, Store, StoreChanged, defineSchema, getSchema, schemaNames, type Change, defineShape, LocalStorageAdapter } from "../index.ts";
+import { EventBus } from "../../kernel/index.ts";
 
 // ---------------------------------------------------------------- schema
 
@@ -146,10 +146,12 @@ test("table：where / all 快照", () => {
 
 // -------------------------------------------------------------- database
 
+const Meta = { key: s.string().key(), value: s.number() };
+
 function makeDb() {
   const db = new Database();
   const weapons = defineTable("weapons", Weapon);
-  const meta = defineTable("meta", { key: s.string().key(), value: s.number() });
+  const meta = defineTable("meta", Meta);
   db.register(weapons);
   db.register(meta);
   return { db, weapons, meta };
@@ -313,4 +315,122 @@ test("Table 的二级索引由总线驱动", () => {
   t.update("a", { tags: ["冰"] });
   assert.equal(t.find("tags", "火").length, 1);
   assert.equal(t.find("tags", "冰").length, 2);
+});
+
+// --------------------------------------------------------- safety regressions
+
+test("import duplicate keys in a later table leaves every live table and index untouched", () => {
+  const { db, weapons, meta } = makeDb();
+  weapons.indexBy("tags");
+  weapons.insert({ id: "old", name: "old", damage: 1, tags: ["keep"] });
+  meta.insert({ key: "old", value: 1 });
+  const before = db.export();
+  let changes = 0;
+  weapons.onChange(() => changes++);
+  assert.throws(() => db.import({ version: 1, tables: {
+    weapons: [{ id: "new", name: "new", damage: 2, tags: ["new"] }],
+    meta: [{ key: "same", value: 1 }, { key: "same", value: 2 }],
+  } }), /主键重复/);
+  assert.deepEqual(db.export(), before);
+  assert.equal(weapons.find("tags", "keep").length, 1);
+  assert.equal(changes, 0);
+});
+
+test("import commits all tables and indexes before notifying, even if a listener throws", async () => {
+  const { db, weapons, meta } = makeDb();
+  weapons.indexBy("tags");
+  weapons.insert({ id: "old", name: "old", damage: 1, tags: ["old"] });
+  const observed: string[] = [];
+  weapons.onChange(() => {
+    assert.equal(meta.require("new").value, 9);
+    assert.equal(weapons.find("tags", "new").length, 1);
+    assert.equal(weapons.find("tags", "old").length, 0);
+    throw new Error("observer failure");
+  });
+  weapons.onChange((change) => observed.push(change.type));
+  meta.onChange(() => observed.push("meta"));
+  const storage = new MemoryStorage();
+  await storage.write("new", JSON.stringify({ version: 1, tables: {
+    weapons: [{ id: "new", name: "new", damage: 2, tags: ["new"] }],
+    meta: [{ key: "new", value: 9 }],
+  } }));
+  const result = await db.load(storage, "new");
+  assert.equal(result.ok, false);
+  if (!result.ok) {
+    assert.equal(result.committed, true);
+    assert.match(result.error, /committed/);
+  }
+  assert.deepEqual(observed, ["delete", "create", "meta"]);
+  assert.equal(weapons.size, 1);
+  assert.equal(meta.size, 1);
+});
+
+test("DB boundaries detach mutable input, return values, predicates and notifications", () => {
+  const table = defineTable("detached.rows", { id: s.string().key(), tags: s.array(s.string()), extra: s.any<{ nested: number[] }>() });
+  table.indexBy("tags");
+  const input = { id: "a", tags: ["original"], extra: { nested: [1] } };
+  const created = table.insert(input);
+  input.extra.nested.push(2);
+  created.tags.push("create");
+  table.require("a").tags.push("require");
+  table.get("a")!.extra.nested.push(3);
+  table.list()[0].tags.push("list");
+  table.find("tags", "original")[0].tags.push("find");
+  table.query((row) => { row.tags.push("predicate"); return true; });
+  table.onChange((change) => { change.after?.tags.push("listener"); });
+  let second: string[] = [];
+  table.onChange((change) => { second = change.after!.tags; });
+  table.update("a", { tags: ["updated"] }).tags.push("update");
+  assert.deepEqual(table.require("a"), { id: "a", tags: ["updated"], extra: { nested: [1] } });
+  assert.deepEqual(second, ["updated"]);
+  assert.equal(table.find("tags", "updated").length, 1);
+  assert.equal(table.find("tags", "listener").length, 0);
+});
+
+test("invalid migration output and malformed snapshots never change rows", () => {
+  for (const output of [null, { version: NaN, tables: {} }, { version: 3, tables: {} }, { version: 2, tables: { meta: {} } }]) {
+    const { db, meta } = makeDb();
+    db.version = 2;
+    meta.insert({ key: "keep", value: 1 });
+    const before = db.export();
+    db.addMigration({ from: 1, migrate: () => output as never });
+    assert.throws(() => db.import({ version: 1, tables: {} }));
+    assert.deepEqual(db.export(), before);
+  }
+});
+
+test("schema registration rejects ambiguous replacement definitions", () => {
+  const shape = { id: s.string().key(), value: s.number() };
+  const schema = defineSchema("duplicate.contract", shape);
+  assert.equal(defineSchema("duplicate.contract", shape), schema);
+  assert.equal(defineSchema("duplicate.contract", { ...shape }), schema);
+  assert.throws(() => defineSchema("duplicate.contract", { id: s.string().key(), value: s.string() }), /Conflicting/);
+  assert.throws(() => defineSchema("duplicate.contract", shape, { version: 2 }), /version/);
+});
+
+test("shape registration rejects incompatible aliases", () => {
+  const shape = { value: s.number() };
+  const definition = defineShape("duplicate.shape", shape);
+  assert.equal(defineShape("duplicate.shape", shape), definition);
+  assert.throws(() => defineShape("duplicate.shape", { value: s.string() }), /Conflicting/);
+});
+
+test("DB rejects nonprimitive primary keys before mutation", () => {
+  const table = defineTable("invalid.key", { id: s.any().key() });
+  for (const id of [{}, [], NaN, Infinity, null]) assert.throws(() => table.insert({ id }), /主键/);
+  assert.equal(table.size, 0);
+});
+
+test("localStorage adapter fails observably when unavailable", async () => {
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
+  Object.defineProperty(globalThis, "localStorage", { configurable: true, value: undefined });
+  try {
+    const adapter = new LocalStorageAdapter();
+    await assert.rejects(adapter.read("x"), /unavailable/);
+    await assert.rejects(adapter.write("x", "{}"), /unavailable/);
+    await assert.rejects(adapter.delete("x"), /unavailable/);
+  } finally {
+    if (descriptor) Object.defineProperty(globalThis, "localStorage", descriptor);
+    else Reflect.deleteProperty(globalThis, "localStorage");
+  }
 });

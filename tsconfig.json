@@ -6,30 +6,19 @@
       "DOM",
       "DOM.Iterable"
     ],
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "jsx": "react-jsx",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noEmit": true,
     "isolatedModules": true,
     "skipLibCheck": true,
-    "resolveJsonModule": true,
     "allowImportingTsExtensions": true,
-    // 只允许可擦除语法：node 的 strip-only 模式要能直接跑测试
-    "erasableSyntaxOnly": true,
-    "baseUrl": ".",
-    "paths": {
-      "#core/*": [
-        "src/core/*"
-      ],
-      "#content/*": [
-        "src/content/*"
-      ]
-    }
+    "erasableSyntaxOnly": true
   },
   "include": [
-    "src"
+    "src",
+    "examples"
   ]
 }

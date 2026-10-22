@@ -52,6 +52,16 @@ export class Lifetime {
 
   adopt(child: Lifetime): void {
     if (child === this) throw new Error("Lifetime 不能收养自己");
+    if (this.disposed) {
+      child.dispose();
+      return;
+    }
+    for (let owner: Lifetime | null = this; owner; owner = owner.owner) {
+      if (owner === child) throw new Error("Lifetime ownership cycle");
+    }
+    if (child.disposed) return;
+    child.owner?.children.delete(child);
+    child.owner = this;
     this.children.add(child);
   }
 

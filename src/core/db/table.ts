@@ -4,14 +4,13 @@ import type { ObjectValue, Shape } from "./schema.ts";
 
 /**
  * Table = Store + 二级索引。
- * 索引不是自己维护的：订阅 CRUD 总线的变更，统一在 applyChange 里更新。
+ * 索引由内部 CRUD hook 更新，先于外部订阅者；批量导入时一次重建。
  */
 export class Table<S extends Shape> extends Store<S> {
   private indexMap = new Map<string, Map<unknown, Set<Key>>>();
 
   constructor(name: string, shape: S) {
     super(defineSchema(name, shape));
-    this.onChange((change) => this.applyChange(change));
   }
 
   // ---- 兼容旧 API 的别名 ----
@@ -73,7 +72,12 @@ export class Table<S extends Shape> extends Store<S> {
     return out;
   }
 
-  private applyChange(change: Change<ObjectValue<S>>): void {
+  protected override rebuildIndexes(): void {
+    for (const index of this.indexMap.values()) index.clear();
+    for (const [key, row] of this.rows()) this.addIndex(key, row);
+  }
+
+  protected override applyChange(change: Change<ObjectValue<S>>): void {
     if (this.indexMap.size === 0) return;
     if (change.type === "create") {
       if (change.after) this.addIndex(change.key, change.after);

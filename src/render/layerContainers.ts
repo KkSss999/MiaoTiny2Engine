@@ -1,20 +1,28 @@
 import { Container } from "pixi.js";
-import { LAYER_Z, LAYERS, SORTED_LAYERS, type Layer } from "../game/layers.ts";
 
-export type LayerMap = Record<Layer, Container>;
+export type LayerDefinition<K extends string = string> = { id: K; zIndex: number; sortableChildren?: boolean };
+export type LayerMap<K extends string = string> = Map<K, Container>;
 
-export function createLayers(): LayerMap {
-  const map = {} as LayerMap;
-  for (const layer of LAYERS) {
-    const container = new Container();
-    container.zIndex = LAYER_Z[layer];
-    container.sortableChildren = SORTED_LAYERS.includes(layer);
-    container.label = `layer:${layer}`;
-    map[layer] = container;
+/** Caller supplies layer names and order; no game-specific global registry. */
+export function createLayers<K extends string>(definitions: readonly LayerDefinition<K>[]): LayerMap<K> {
+  const ids = new Set<K>();
+  for (const def of definitions) {
+    if (ids.has(def.id) || !Number.isFinite(def.zIndex)) throw new Error(`Invalid or duplicate layer: ${def.id}`);
+    ids.add(def.id);
   }
-  return map;
+  const layers: LayerMap<K> = new Map();
+  for (const def of definitions) {
+    const container = new Container();
+    container.zIndex = def.zIndex;
+    container.sortableChildren = def.sortableChildren ?? false;
+    container.label = `layer:${def.id}`;
+    layers.set(def.id, container);
+  }
+  return layers;
 }
 
+/** Root owns attached containers; destroy it with children:true during teardown. */
 export function attachLayers(root: Container, layers: LayerMap): void {
-  for (const layer of LAYERS) root.addChild(layers[layer]);
+  root.sortableChildren = true;
+  for (const layer of layers.values()) root.addChild(layer);
 }

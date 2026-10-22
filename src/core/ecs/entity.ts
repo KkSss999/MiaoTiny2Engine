@@ -28,6 +28,7 @@ export class EntityAllocator {
       return makeEntity(index, gen);
     }
     const fresh = this.gens.length;
+    if (fresh > INDEX_MASK) throw new Error("Entity capacity exhausted");
     this.gens.push(0);
     this.alive.push(true);
     this.count++;
@@ -38,22 +39,23 @@ export class EntityAllocator {
     const index = entityIndex(e);
     if (!this.isAlive(e)) return false;
     this.alive[index] = false;
-    this.gens[index] = ((this.gens[index] ?? 0) + 1) & GEN_MASK;
-    this.free.push(index);
+    // Never wrap a generation: retire exhausted slots rather than revive stale handles.
+    if (this.gens[index] < GEN_MASK) {
+      this.gens[index]++;
+      this.free.push(index);
+    }
     this.count--;
     return true;
   }
 
   isAlive(e: Entity): boolean {
+    if (!Number.isInteger(e) || e !== (e | 0)) return false;
     const index = entityIndex(e);
     return this.alive[index] === true && this.gens[index] === entityGen(e);
   }
 
   clear(): void {
-    this.gens = [];
-    this.alive = [];
-    this.free = [];
-    this.count = 0;
+    for (const e of this.aliveEntities()) this.destroy(e);
   }
 
   /** 从 0 开始遍历仍然存活的实体（调试/序列化用，正常逻辑走 query） */

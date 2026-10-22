@@ -32,15 +32,20 @@ export class LocalStorageAdapter implements StorageAdapter {
     this.prefix = prefix;
   }
 
+  private get storage(): Storage {
+    if (!globalThis.localStorage) throw new Error("localStorage is unavailable");
+    return globalThis.localStorage;
+  }
+
   async read(key: string): Promise<string | null> {
-    return globalThis.localStorage?.getItem(this.prefix + key) ?? null;
+    return this.storage.getItem(this.prefix + key) ?? null;
   }
 
   async write(key: string, data: string): Promise<void> {
-    globalThis.localStorage?.setItem(this.prefix + key, data);
+    this.storage.setItem(this.prefix + key, data);
   }
 
   async delete(key: string): Promise<void> {
-    globalThis.localStorage?.removeItem(this.prefix + key);
+    this.storage.removeItem(this.prefix + key);
   }
 }

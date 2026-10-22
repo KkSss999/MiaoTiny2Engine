@@ -3,8 +3,8 @@ import { componentName, type ComponentType } from "./component.ts";
 import { Archetype } from "./archetype.ts";
 import { Query } from "./query.ts";
 import { CommandBuffer } from "./commands.ts";
-import { Lifetime } from "#core/kernel/index.ts";
-import { EventBus } from "#core/kernel/index.ts";
+import { Lifetime } from "../kernel/index.ts";
+import { EventBus } from "../kernel/index.ts";
 import { DataChanged, type Change } from "../db/index.ts";
 import { componentChange, componentSchema, entityCreated, entityDestroyed, ENTITY_SCHEMA } from "./changes.ts";
 import { EntityScope } from "./scope.ts";
@@ -26,6 +26,22 @@ export class World {
   private entityLifetimes = new Map<Entity, Lifetime>();
   private componentLifetimes = new Map<Entity, Map<number, Lifetime>>();
   private version = 0;
+  private disposed = false;
+  private resetting = false;
+  private scopes = new Set<EntityScope>();
+
+  get isDisposed(): boolean { return this.disposed; }
+
+  private assertActive(): void {
+    if (this.disposed || this.resetting) throw new Error("World is disposed or resetting");
+  }
+
+  /** Internal ownership registration, including directly constructed EntityScopes. */
+  trackScope(scope: EntityScope): () => void {
+    this.assertActive();
+    this.scopes.add(scope);
+    return () => this.scopes.delete(scope);
+  }
   /** 开启后，带 shape 的组件在 add 时会被 @gdd/db 校验（开发期用） */
   validateComponents = false;
 
@@ -62,6 +78,7 @@ export class World {
   // ---------------------------------------------------------------- entities
 
   spawn(...types: ComponentType<unknown>[]): Entity {
+    this.assertActive();
     const e = this.entities.create();
     const idx = entityIndex(e);
     const empty = this.getOrCreate([]);
@@ -83,8 +100,8 @@ export class World {
     this.rowOf[idx] = -1;
     const destroyed = this.entities.destroy(e);
     if (destroyed) {
-      this.emitChange(entityDestroyed(e));
       this.disposeEntityLifetime(e);
+      this.emitChange(entityDestroyed(e));
     }
     return destroyed;
   }
@@ -93,7 +110,7 @@ export class World {
 
   has<T>(e: Entity, type: ComponentType<T>): boolean {
     const arch = this.archOf[entityIndex(e)];
-    return arch !== undefined && arch.has(type.id);
+    return this.entities.isAlive(e) && arch !== undefined && arch.has(type.id);
   }
 
   get<T>(e: Entity, type: ComponentType<T>): T | undefined {
@@ -114,7 +131,7 @@ export class World {
   set<T>(e: Entity, type: ComponentType<T>, value: T): void {
     const idx = entityIndex(e);
     const arch = this.archOf[idx];
-    if (!arch) throw new Error(`entity ${e} 已销毁`);
+    if (!arch || !this.entities.isAlive(e)) throw new Error(`entity ${e} 已销毁`);
     const col = arch.indexOf(type.id);
     if (col < 0) throw new Error(`entity ${e} 缺少组件 ${type.name}`);
     const row = this.rowOf[idx];
@@ -171,14 +188,14 @@ export class World {
     const newRow = target.push(e, targetValues);
     this.archOf[idx] = target;
     this.rowOf[idx] = newRow;
-    this.emitChange(componentChange(type, "delete", e, removed));
     this.disposeComponentLifetime(e, type.id);
+    this.emitChange(componentChange(type, "delete", e, removed));
   }
 
   // ------------------------------------------------------------------ query
 
   query<T extends ComponentType<unknown>[]>(...types: T): Query<T> {
-    const key = "q|" + types.map((t) => t.id).sort((a, b) => a - b).join(",");
+    const key = "q|" + types.map((t) => t.id).join(",");
     let q = this.queryCache.get(key);
     if (!q) {
       q = new Query(this, types);
@@ -189,7 +206,7 @@ export class World {
 
   queryExcluding<T extends ComponentType<unknown>[]>(excluded: ComponentType<unknown>[], ...types: T): Query<T> {
     const ex = excluded.map((t) => t.id).sort((a, b) => a - b);
-    const key = "x|" + ex.join(",") + "|" + types.map((t) => t.id).sort((a, b) => a - b).join(",");
+    const key = "x|" + ex.join(",") + "|" + types.map((t) => t.id).join(",");
     let q = this.queryCache.get(key);
     if (!q) {
       q = new Query(this, types, excluded);
@@ -201,6 +218,7 @@ export class World {
   // -------------------------------------------------------------- resources
 
   setResource<T>(key: string | symbol, value: T): T {
+    this.assertActive();
     this.resources.set(key, value);
     return value;
   }
@@ -219,6 +237,7 @@ export class World {
 
   /** 组件出现：过滤统一变更通道得到，不是另一套机制 */
   onAdd<T>(type: ComponentType<T>, fn: (e: Entity, value: T) => void): () => void {
+    this.assertActive();
     const schema = componentSchema(type);
     return this.bus.on(DataChanged, (change) => {
       if (change.schema !== schema || change.type !== "create") return;
@@ -228,6 +247,7 @@ export class World {
 
   /** 组件移除：同样来自统一变更通道 */
   onRemove<T>(type: ComponentType<T>, fn: (e: Entity, value: T) => void): () => void {
+    this.assertActive();
     const schema = componentSchema(type);
     return this.bus.on(DataChanged, (change) => {
       if (change.schema !== schema || change.type !== "delete") return;
@@ -237,6 +257,7 @@ export class World {
 
   /** 实体创建/销毁订阅（同一条通道） */
   onEntity(fn: (change: { type: "create" | "delete"; entity: Entity }) => void): () => void {
+    this.assertActive();
     return this.bus.on(DataChanged, (change) => {
       if (change.schema !== ENTITY_SCHEMA) return;
       fn({ type: change.type === "delete" ? "delete" : "create", entity: change.key as Entity });
@@ -249,11 +270,14 @@ export class World {
 
   /** 创建一个实体分组（房间/关卡/场景用它管理生命周期） */
   createScope(parent?: Lifetime): EntityScope {
+    this.assertActive();
     return new EntityScope(this, parent);
   }
 
   /** 实体生命周期：随实体销毁级联 */
   entityLifetime(e: Entity): Lifetime {
+    this.assertActive();
+    if (!this.entities.isAlive(e)) throw new Error(`entity ${e} 已销毁`);
     const existing = this.entityLifetimes.get(e);
     if (existing) return existing;
     const life = this.lifetime.fork();
@@ -263,6 +287,8 @@ export class World {
 
   /** 某个组件的作用域：组件被移除或实体销毁时级联 */
   componentLifetime<T>(e: Entity, type: ComponentType<T>): Lifetime {
+    this.assertActive();
+    if (!this.has(e, type)) throw new Error(`entity ${e} 缺少组件 ${type.name}`);
     let map = this.componentLifetimes.get(e);
     if (!map) {
       map = new Map();
@@ -277,9 +303,12 @@ export class World {
 
   /** 销毁世界：级联销毁所有实体作用域和订阅 */
   dispose(): void {
+    if (this.disposed) return;
+    this.clear();
+    this.disposed = true;
     this.lifetime.dispose();
-    this.entityLifetimes.clear();
-    this.componentLifetimes.clear();
+    this.bus.clear();
+    this.commands.clear();
   }
 
   // ---------------------------------------------------------------- internal
@@ -298,17 +327,18 @@ export class World {
   }
 
   private disposeEntityLifetime(e: Entity): void {
-    this.entityLifetimes.get(e)?.dispose();
+    const life = this.entityLifetimes.get(e);
     this.entityLifetimes.delete(e);
     this.componentLifetimes.delete(e);
+    life?.dispose();
   }
 
   private disposeComponentLifetime(e: Entity, typeId: number): void {
     const map = this.componentLifetimes.get(e);
     const life = map?.get(typeId);
     if (!life) return;
-    life.dispose();
     map?.delete(typeId);
+    life.dispose();
   }
 
   private checked<T>(type: ComponentType<T>, value?: Partial<T> | T): T {
@@ -326,16 +356,31 @@ export class World {
     }
   }
 
+  /** Reusable reset: clears all data, scopes, subscriptions and queued work. */
   clear(): void {
-    for (const e of [...this.entityLifetimes.keys()]) this.disposeEntityLifetime(e);
-    this.archetypes = [];
-    this.bySignature.clear();
-    this.archOf = [];
-    this.rowOf = [];
-    this.queryCache.clear();
-    this.resources.clear();
-    this.entities.clear();
-    this.version++;
+    this.assertActive();
+    this.resetting = true;
+    try {
+      // Stop callbacks observing half-reset state; scope cleanup still destroys members.
+      this.bus.clear();
+      this.commands.clear();
+      for (const scope of [...this.scopes]) scope.dispose();
+      this.scopes.clear();
+      for (const e of [...this.entityLifetimes.keys()]) this.disposeEntityLifetime(e);
+      this.componentLifetimes.clear();
+      this.archetypes = [];
+      this.bySignature.clear();
+      this.archOf = [];
+      this.rowOf = [];
+      this.queryCache.clear();
+      this.resources.clear();
+      this.entities.clear();
+      this.version++;
+    } finally {
+      this.bus.clear();
+      this.commands.clear();
+      this.resetting = false;
+    }
   }
 }
 

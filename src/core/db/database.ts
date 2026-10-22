@@ -14,7 +14,7 @@ export type Migration = {
 
 export type LoadResult =
   | { ok: true; version: number; migrated: number }
-  | { ok: false; error: string };
+  | { ok: false; error: string; committed?: boolean };
 
 export type ImportOptions = { allowUnknownTables?: boolean };
 
@@ -70,20 +70,14 @@ export class Database {
   }
 
   import(snapshot: unknown, options: ImportOptions = {}): number {
-    if (typeof snapshot !== "object" || snapshot === null) throw new Error("快照不是对象");
-    const snap = snapshot as Snapshot;
-    if (typeof snap.version !== "number") throw new Error("快照缺少 version");
-    if (typeof snap.tables !== "object" || snap.tables === null) throw new Error("快照缺少 tables");
-    if (snap.version > this.version) {
-      throw new Error(`存档版本 ${snap.version} 高于当前 ${this.version}，拒绝读取`);
-    }
+    const snap = validateSnapshot(snapshot, this.version);
 
     let current = snap;
     let migrated = 0;
     while (current.version < this.version) {
       const migration = this.migrations.find((m) => m.from === current.version);
       if (!migration) throw new Error(`缺少从 v${current.version} 升级的迁移`);
-      current = migration.migrate(current);
+      current = validateSnapshot(migration.migrate(structuredClone(current)), this.version);
       migrated++;
       if (current.version <= migration.from) throw new Error(`迁移 v${migration.from} 没有推进版本号`);
     }
@@ -95,20 +89,19 @@ export class Database {
       }
     }
 
-    // 先全量校验到暂存区：任何一行不合格都在改动表之前抛错
-    const staged = new Map<string, unknown[]>();
+    // Validate every row and primary-key set before committing any table.
+    const stages = [];
     for (const [name, rows] of Object.entries(current.tables)) {
       const table = this.tables.get(name);
-      if (!table) continue;
-      staged.set(name, rows.map((row) => table.validate(row)));
+      if (table) stages.push(table.prepareReplacement(rows));
     }
-
-    for (const [name, table] of this.tables) {
-      const rows = staged.get(name);
-      if (!rows) continue;
-      table.clear();
-      for (const row of rows) table.insert(row as never);
+    // No user observers run until every table and index has been replaced.
+    for (const stage of stages) stage.commit();
+    const errors: unknown[] = [];
+    for (const stage of stages) {
+      try { stage.publish(); } catch (error) { errors.push(error); }
     }
+    if (errors.length) throw new ImportNotificationError(errors);
     return migrated;
   }
 
@@ -134,7 +127,28 @@ export class Database {
       const migrated = this.import(parsed);
       return { ok: true, version: this.version, migrated };
     } catch (error) {
-      return { ok: false, error: (error as Error).message };
+      return { ok: false, error: (error as Error).message, committed: error instanceof ImportNotificationError };
     }
   }
+}
+
+/** Import succeeded; observers failed after commit. Do not retry the import blindly. */
+export class ImportNotificationError extends AggregateError {
+  readonly committed = true;
+  constructor(errors: unknown[]) {
+    super(errors, "Import committed; change listeners failed");
+    this.name = "ImportNotificationError";
+  }
+}
+
+function validateSnapshot(value: unknown, version: number): Snapshot {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) throw new Error("快照不是对象");
+  const snap = value as Snapshot;
+  if (!Number.isSafeInteger(snap.version) || snap.version < 1) throw new Error("快照缺少合法 version");
+  if (snap.version > version) throw new Error(`存档版本 ${snap.version} 高于当前 ${version}，拒绝读取`);
+  if (typeof snap.tables !== "object" || snap.tables === null || Array.isArray(snap.tables)) throw new Error("快照缺少 tables");
+  for (const [name, rows] of Object.entries(snap.tables)) {
+    if (!Array.isArray(rows)) throw new Error(`快照表 ${name} 必须是数组`);
+  }
+  return snap;
 }

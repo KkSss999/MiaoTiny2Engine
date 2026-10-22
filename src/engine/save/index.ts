@@ -1,37 +1,30 @@
-/**
- * 存档端口：db 快照 ↔ 存储介质。
- * 版本迁移在 core/db 里已有，这里只管"放哪儿"。
- */
+import { LocalStorageAdapter, type StorageAdapter } from "../../core/db/adapters.ts";
+
+/** JSON convenience over the same asynchronous string adapter used by Database. */
 export interface SavePort {
-  read<T>(key: string): T | null;
-  write(key: string, value: unknown): void;
-  remove(key: string): void;
+  read<T>(key: string): Promise<T | null>;
+  write(key: string, value: unknown): Promise<void>;
+  remove(key: string): Promise<void>;
+}
+
+/** Missing keys return null. Parse, serialization, quota and I/O failures reject. */
+export function createSavePort(storage: StorageAdapter): SavePort {
+  return {
+    async read<T>(key: string): Promise<T | null> {
+      const raw = await storage.read(key);
+      return raw === null ? null : JSON.parse(raw) as T;
+    },
+    async write(key: string, value: unknown): Promise<void> {
+      const data = JSON.stringify(value);
+      if (data === undefined) throw new TypeError("Value is not JSON serializable");
+      await storage.write(key, data);
+    },
+    async remove(key: string): Promise<void> {
+      await storage.delete(key);
+    },
+  };
 }
 
 export function createLocalSave(prefix = "cbb"): SavePort {
-  const keyOf = (key: string) => `${prefix}:${key}`;
-  return {
-    read<T>(key: string): T | null {
-      try {
-        const raw = localStorage.getItem(keyOf(key));
-        return raw ? (JSON.parse(raw) as T) : null;
-      } catch {
-        return null;
-      }
-    },
-    write(key: string, value: unknown): void {
-      try {
-        localStorage.setItem(keyOf(key), JSON.stringify(value));
-      } catch {
-        /* 配额满 / 隐私模式：静默失败，别让存档把游戏搞崩 */
-      }
-    },
-    remove(key: string): void {
-      try {
-        localStorage.removeItem(keyOf(key));
-      } catch {
-        /* 同上 */
-      }
-    },
-  };
+  return createSavePort(new LocalStorageAdapter(`${prefix}:`));
 }

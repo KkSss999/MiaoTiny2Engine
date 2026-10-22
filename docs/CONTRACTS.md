@@ -1,103 +1,37 @@
-# 层间契约
+# 核心契约
 
-> 每一层对外只暴露 `index.ts`；跨层引用一律走别名 `#core/*` `#content/*`，层内用相对路径。
+## World / Entity
 
-## 别名
+实体是 world-local 的有代数整数句柄，不能跨 World 使用。has/get 对失效句柄不返回新实体数据；set 和所有权获取拒绝失效句柄。clear 不重置代数，耗尽代数的槽位退休，避免旧句柄复活。
 
-| 别名 | 指向 | 谁能用 |
-|---|---|---|
-| `#core/*` | `src/core/*` | 所有人 |
-| `#content/*` | `src/content/*` | 所有人 |
+query(A,B) 与 query(B,A) 各自保持列投影顺序，包括 chunks 和排除查询。循环中需结构变更时使用命令队列。
 
-`package.json imports` + `tsconfig paths` + `vite alias` 三处已配好，node / tsc / vite 都能解析。
+clear 是可复用 reset：实体、资源、查询缓存、事件订阅、待处理事件/命令和旧作用域失效。dispose 是终态。保留 Query 实例可见当前世界；不要保留旧组件对象作为新世界状态。
 
-## 1. content —— 纯数据
+ECS 值可变；get/query/snapshot 不是只读数据屏障。DataChanged 覆盖显式结构/CRUD 操作，不保证每次字段赋值都发事件。同步通知异常可能发生于已提交的操作之后，调用者不能假设回滚。
 
-```ts
-// #content/index.ts
-export const contentDb: Database
-export function loadContent(): number          // 幂等，模块加载时已调用
-export function getWeapon(id): WeaponRow | undefined
-export function getEnemy(id): EnemyDef | undefined
-export function getAffix(id): AffixRow | undefined
-export function getClip(id): AnimationClip | undefined
-export function applyContentPatch(table, row): boolean   // 开发期热更新
-```
+## 所有权与事件
 
-约束：**不含行为**。能被编辑器独立打开、校验、diff。
+已销毁 Lifetime 的 fork/adopt 会立即销毁孩子，EventScope 不允许重新注册活监听。所有权循环被拒绝。清理回调全部尝试；Lifetime 清理异常会被记录，不中断其他清理。
 
-## 2. engine —— 运行时服务
+EventBus.emit 是同步调用；异常传播。drain 与命令 flush 是失败即停，保留尚未执行的批次项，不重放失败项。clear/reset 取消旧批次。Runtime 在失败时进一步丢弃待处理工作并进入 faulted 状态。
 
-### assets
+## 时间与 Runtime
 
-```ts
-type SpriteEntry = { id: string; image?: string | null; size?: [number, number] }
-type SheetEntry  = { id: string; image?: string | null; frameWidth: number; frameHeight: number; cols: number; rows: number }
-type AudioEntry  = { id: string; src: string; volume?: number }
+每步系统收到不同 frame/elapsed。暂停不积累模拟时间（在 tick 内 pause 于当前 catch-up 批次结束后生效）；reset 清空时钟、世界和 faulted 状态，但保留系统注册。应用必须重新创建实体、资源、订阅。
 
-getManifest(): Manifest
-getSpriteEntry(id) / getSheetEntry(id) / getAudioEntry(id)
-missingImages(): { sprites: string[]; sheets: string[] }
-```
+追帧上限丢弃超出的整步，保留小数插值余量；maxDeltaMs 还会截断过长真实间隔。Runtime 不读取真实时钟。系统、命令、事件的异常不提供事务回滚；reset 后才可恢复。
 
-**不依赖 pixi**。真实图片路径写在 `content/manifest.json`；程序化占位图属于表现层（`render/placeholders.ts`），不在 manifest 里。
+## DB
 
-### inputmap
+数据必须可 structuredClone；读取、CRUD 返回值和事件 payload 是隔离副本。修改副本不会更改表和索引。主键不可通过 update 修改。
 
-```ts
-type ActionMap = Record<string, string[]>   // action → KeyboardEvent.code[]
+import 对快照、迁移输出、行和重复主键先校验；失败不改变现有表。快照中未出现的表保持不变。所有参与表与索引先提交，再通知观察者。观察者失败抛 ImportNotificationError(committed=true)，load 返回 ok:false, committed:true，不能误认为导入未发生。
 
-new InputActions(input: InputState, map: ActionMap)
-  down(action): boolean
-  pressed(action): boolean    // 消费一次
-  axis(negative, positive): -1 | 0 | 1
-```
+schema/shape/component 全局名称不得绑定不同定义。重复注册必须复用原来的 validator/factory 身份，不能依赖泛型强转隐藏冲突。不同模块应使用命名空间前缀。
 
-映射数据在 `content/actions.json`。玩法系统只认 action 名，不认物理键。
+## 持久化、资源与表现
 
-### audio
+StorageAdapter 是异步字符串 read/write/delete；SavePort 是其 JSON 便利层，read/write/remove 都返回 Promise。缺键返回 null；损坏 JSON、序列化、配额、I/O、不可用 localStorage 都可观察地失败，调用方必须处理。
 
-```ts
-interface AudioPort {
-  play(id: SfxId, options?: { volume?, rate? }): void
-  setVolume(master: number): void
-  readonly unlocked: boolean
-  dispose(): void
-}
-```
-
-游戏侧只发事件（`WeaponFired` / `DamageLanded` / `EntityKilled`），音频层订阅并决定播什么。**game 不 import 音频实现**，通过 bridge 注入。
-
-### save
-
-```ts
-interface SavePort {
-  read<T>(key: string): T | null
-  write(key: string, value: unknown): void
-  remove(key: string): void
-}
-```
-
-存的是 `db.export()` 快照与设置；版本迁移在 core/db。
-
-## 3. game —— 玩法
-
-只暴露两样给 UI：
-
-```ts
-// #game/api.ts     命令（UI → 游戏）
-api.start(race, seed?) / restart() / pause() / resume() / toMenu() / pickReward(i)
-
-// #game/store.ts   状态（游戏 → UI）
-hud.get() / hud.subscribe(fn) / hud.patch(partial)
-```
-
-其余内部结构（world、systems、factory）**不对 UI 暴露**。
-
-## 4. render —— 表现
-
-只做三件事：读 ECS 组件、订游戏事件、画。**禁止写 ECS**。
-
-## 5. ui —— 界面
-
-只用 `api` 与 `store`。开发页（`?debug=content`）允许读 `#content` 与 manifest，但不碰 world。
+清单由 parseManifest/createAssetCatalog 校验并注入；没有默认游戏内容。loadImageTexture 是异步真实加载，失败拒绝而非返回假成功。共享 Pixi Assets 缓存纹理不由个别表现对象擅自销毁。atlas 子纹理由消费方管理，源纹理保留调用者所有权。

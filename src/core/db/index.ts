@@ -12,7 +12,7 @@ export {
   type ShapeDef,
 } from "./schemaDef.ts";
 export { Store, DataChanged, StoreChanged, type Change, type ChangeType, type Key } from "./store.ts";
-export { Database, type Snapshot, type Migration, type LoadResult, type ImportOptions } from "./database.ts";
+export { ImportNotificationError, Database, type Snapshot, type Migration, type LoadResult, type ImportOptions } from "./database.ts";
 export {
   MemoryStorage,
   LocalStorageAdapter,

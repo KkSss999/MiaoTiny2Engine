@@ -1,5 +1,3 @@
-import raw from "../../../content/manifest.json" with { type: "json" };
-
 /**
  * 资源清单：**纯数据**，不含任何渲染代码。
  *
@@ -35,29 +33,39 @@ export type Manifest = {
   audio: AudioEntry[];
 };
 
-// JSON 的数组字面量推不出元组，这里按契约断言（结构由 manifest.json 保证）
-const manifest = raw as unknown as Manifest;
-
-export function getManifest(): Manifest {
-  return manifest;
+/** Validate user-supplied data before any loader consumes it. IDs are unique per kind. */
+export function parseManifest(raw: unknown): Manifest {
+  if (!raw || typeof raw !== "object") throw new TypeError("Manifest must be an object");
+  const value = raw as Record<string, unknown>;
+  const positive = (n: unknown) => typeof n === "number" && Number.isFinite(n) && n > 0;
+  for (const kind of ["sprites", "sheets", "audio"] as const) {
+    if (!Array.isArray(value[kind])) throw new TypeError(`Manifest.${kind} must be an array`);
+    const ids = new Set<string>();
+    for (const item of value[kind]) {
+      if (!item || typeof item !== "object" || typeof item.id !== "string" || !item.id.trim() || ids.has(item.id)) throw new TypeError(`Invalid or duplicate ${kind} id`);
+      ids.add(item.id);
+      if (kind === "audio") {
+        if (typeof item.src !== "string" || !item.src.trim()) throw new TypeError("Audio src is required");
+        if (item.volume !== undefined && (typeof item.volume !== "number" || !Number.isFinite(item.volume) || item.volume < 0 || item.volume > 1)) throw new TypeError("Invalid audio volume");
+      } else {
+        if (item.image !== undefined && item.image !== null && (typeof item.image !== "string" || !item.image.trim())) throw new TypeError("Invalid image path");
+        if (kind === "sprites" && item.size !== undefined && (!Array.isArray(item.size) || item.size.length !== 2 || !item.size.every(positive))) throw new TypeError("Invalid sprite size");
+        if (kind === "sheets" && ![item.frameWidth, item.frameHeight, item.cols, item.rows].every((n) => positive(n) && Number.isInteger(n))) throw new TypeError("Invalid sheet dimensions");
+      }
+    }
+  }
+  return structuredClone(raw) as Manifest;
 }
 
-export function getSpriteEntry(id: string): SpriteEntry | undefined {
-  return manifest.sprites.find((s) => s.id === id);
-}
-
-export function getSheetEntry(id: string): SheetEntry | undefined {
-  return manifest.sheets.find((s) => s.id === id);
-}
-
-export function getAudioEntry(id: string): AudioEntry | undefined {
-  return manifest.audio.find((a) => a.id === id);
-}
-
-/** 还没接美术的资源：编辑器里标出来，一屏看清欠账 */
-export function missingImages(): { sprites: string[]; sheets: string[] } {
+/** A manifest is injected by the application, never imported from game content. */
+export function createAssetCatalog(raw: unknown) {
+  const manifest = parseManifest(raw);
   return {
-    sprites: manifest.sprites.filter((s) => !s.image).map((s) => s.id),
-    sheets: manifest.sheets.filter((s) => !s.image).map((s) => s.id),
+    getManifest: (): Manifest => structuredClone(manifest),
+    getSpriteEntry: (id: string): SpriteEntry | undefined => structuredClone(manifest.sprites.find((s) => s.id === id)),
+    getSheetEntry: (id: string): SheetEntry | undefined => structuredClone(manifest.sheets.find((s) => s.id === id)),
+    getAudioEntry: (id: string): AudioEntry | undefined => structuredClone(manifest.audio.find((s) => s.id === id)),
+    missingImages: () => ({ sprites: manifest.sprites.filter((s) => !s.image).map((s) => s.id), sheets: manifest.sheets.filter((s) => !s.image).map((s) => s.id) }),
   };
 }
+export type AssetCatalog = ReturnType<typeof createAssetCatalog>;

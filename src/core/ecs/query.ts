@@ -23,8 +23,8 @@ export class Query<T extends ComponentType<unknown>[]> {
 
   constructor(world: World, required: T, excluded: ComponentType<unknown>[] = []) {
     this.world = world;
-    this.required = required;
-    this.excluded = excluded;
+    this.required = [...required] as T;
+    this.excluded = [...excluded];
   }
 
   get archetypes(): readonly Archetype[] {

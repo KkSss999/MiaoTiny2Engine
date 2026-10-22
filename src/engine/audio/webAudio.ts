@@ -1,5 +1,5 @@
 import type { AudioPort, PlayOptions, SfxId } from "./index.ts";
-import { getAudioEntry, type AudioEntry } from "../assets/manifest.ts";
+import { createAssetCatalog, type AssetCatalog, type AudioEntry } from "../assets/manifest.ts";
 
 /**
  * WebAudio 实现：manifest 的 audio 条目 → 懒加载 → AudioBufferSourceNode。
@@ -35,7 +35,10 @@ export class WebAudioPlayer implements AudioPort {
   private volume = 1;
   private disposed = false;
 
-  constructor() {
+  private readonly assets: AssetCatalog;
+
+  constructor(assets: AssetCatalog = createAssetCatalog({ sprites: [], sheets: [], audio: [] })) {
+    this.assets = assets;
     const Ctor = audioContextCtor();
     if (!Ctor) throw new Error("浏览器不支持 WebAudio");
     const ctx = new Ctor();
@@ -61,7 +64,7 @@ export class WebAudioPlayer implements AudioPort {
 
   play(id: SfxId, options: PlayOptions = {}): void {
     if (this.disposed || !this.unlocked) return;
-    const entry = getAudioEntry(id);
+    const entry = this.assets.getAudioEntry(id);
     // manifest 里还没有这条音效：静默跳过（现在的常态）
     if (!entry || this.broken.has(entry.id)) return;
     const gain = Math.max(0, options.volume ?? 1) * Math.max(0, entry.volume ?? 1);
@@ -130,6 +133,7 @@ export class WebAudioPlayer implements AudioPort {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const bytes = await res.arrayBuffer();
       const buffer = await ctx.decodeAudioData(bytes);
+      if (this.disposed) return null;
       this.buffers.set(entry.id, buffer);
       return buffer;
     } catch (err) {
@@ -140,6 +144,6 @@ export class WebAudioPlayer implements AudioPort {
   }
 }
 
-export function createWebAudio(): AudioPort {
-  return new WebAudioPlayer();
+export function createWebAudio(assets?: AssetCatalog): AudioPort {
+  return new WebAudioPlayer(assets);
 }

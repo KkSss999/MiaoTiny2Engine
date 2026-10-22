@@ -1,4 +1,4 @@
-import type { InputState } from "#core/kernel/index.ts";
+import type { InputState } from "../../core/kernel/index.ts";
 
 /**
  * 动作映射：把"物理键"和"游戏动作"解耦。

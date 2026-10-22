@@ -1,4 +1,4 @@
-import type { Entity } from "#core/ecs/index.ts";
+import type { Entity } from "../core/ecs/index.ts";
 
 type Tween = { e: Entity; from: number; to: number; t: number; dur: number };
 
@@ -8,11 +8,13 @@ export class Tweens {
   private active = new Map<Entity, number>();
 
   add(e: Entity, from: number, to: number, dur: number): void {
+    if (![from, to, dur].every(Number.isFinite) || dur <= 0) throw new RangeError("Tween duration must be positive and values finite");
     this.list = this.list.filter((t) => t.e !== e);
     this.list.push({ e, from, to, t: 0, dur });
   }
 
   update(dt: number): void {
+    if (!Number.isFinite(dt) || dt < 0) throw new RangeError("Invalid tween delta");
     this.active.clear();
     if (this.list.length === 0) return;
     const next: Tween[] = [];
