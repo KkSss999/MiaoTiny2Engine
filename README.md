@@ -1,4 +1,6 @@
-# cbb
+# MiaoTiny²Engine · Mt²E
+
+GitHub 仓库名：`MiaoTiny2Engine`。
 
 轻量 TypeScript 游戏框架，不包含旧游戏、游戏资源或未完成的 React 前端。
 目标是可组合、可测试的单进程运行时，不是完整编辑器、服务端或成品游戏引擎。
