@@ -1,111 +1,49 @@
-// 依赖方向检查：分层只能向下依赖，反向 import 直接失败。
-// 1) src 顶层分层：core / content / engine / game / render / ui
-// 2) core 内部子层：kernel / db / ecs / agent
-import fs from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import ts from 'typescript';
 
-const SRC = fileURLToPath(new URL("../src", import.meta.url));
-const CORE = path.join(SRC, "core");
-
-const TOP_ALLOWED = {
-  core: [],
-  content: ["core"],
-  engine: ["core", "content"],
-  game: ["core", "content", "engine"],
-  // app 是装配层：把 game / render / engine 拼起来，唯一可以认识所有实现的地方
-  app: ["core", "content", "engine", "game", "render"],
-  render: ["core", "content", "engine", "game"],
-  // ui 是最上层；开发页面允许读 render 的只读工具
-  ui: ["core", "content", "engine", "game", "render"],
-};
-
-const CORE_ALLOWED = {
-  kernel: [],
-  db: ["kernel"],
-  ecs: ["kernel", "db"],
-  agent: ["kernel"],
-};
-
-function walk(dir, out = []) {
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) walk(full, out);
-    else if (full.endsWith(".ts") || full.endsWith(".tsx")) out.push(full);
-  }
-  return out;
-}
-
-const topOf = (file) => path.relative(SRC, file).split(path.sep)[0];
-const coreLayerOf = (file) => path.relative(CORE, file).split(path.sep)[0];
-
-function resolveSpec(file, spec) {
-  if (spec.startsWith("#core/")) return "core";
-  if (spec.startsWith("#content/")) return "content";
-  if (!spec.startsWith(".")) return null;
-  const resolved = path.resolve(path.dirname(file), spec);
-  if (!resolved.startsWith(SRC)) return null;
-  return topOf(resolved);
-}
-
-const violations = [];
-const edges = new Map();
-
-for (const file of walk(SRC)) {
-  const from = topOf(file);
-  if (!(from in TOP_ALLOWED)) continue;
-
-  const source = fs.readFileSync(file, "utf8");
-  const regex = /from\s+["']([^"']+)["']/g;
-  let match;
-  while ((match = regex.exec(source)) !== null) {
-    const spec = match[1];
-    const target = resolveSpec(file, spec);
-    if (!target || target === from || !(target in TOP_ALLOWED)) continue;
-
-    const key = `${from} → ${target}`;
-    edges.set(key, (edges.get(key) ?? 0) + 1);
-
-    if (!TOP_ALLOWED[from].includes(target)) {
-      const line = source.slice(0, match.index).split("\n").length;
-      violations.push(`${path.relative(process.cwd(), file)}:${line}  ${from} 不能依赖 ${target}（${spec}）`);
+const TOP = { core: [], engine: ['core'], render: ['core', 'engine'] };
+const CORE = { kernel: [], db: ['kernel'], ecs: ['kernel', 'db'], agent: ['kernel'] };
+export function imports(source, file = 'source.ts') {
+  const specs = [];
+  const ast = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true);
+  function visit(node) {
+    if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) specs.push(node.moduleSpecifier.text);
+    if (ts.isCallExpression(node) && (node.expression.kind === ts.SyntaxKind.ImportKeyword || (ts.isIdentifier(node.expression) && node.expression.text === 'require'))) {
+      const arg = node.arguments[0];
+      if (!arg || !ts.isStringLiteral(arg)) throw new Error(`${file}: computed imports cannot be boundary-checked`);
+      specs.push(arg.text);
     }
+    ts.forEachChild(node, visit);
   }
-
-  // core 内部子层
-  if (from !== "core") continue;
-  const sub = coreLayerOf(file);
-  if (!(sub in CORE_ALLOWED)) continue;
-
-  regex.lastIndex = 0;
-  while ((match = regex.exec(source)) !== null) {
-    const spec = match[1];
-    let target = null;
-    if (spec.startsWith(".")) {
-      const resolved = path.resolve(path.dirname(file), spec);
-      const rel = path.relative(CORE, resolved);
-      if (!rel.startsWith("..")) target = rel.split(path.sep)[0];
-    } else if (spec.startsWith("#core/")) {
-      target = spec.slice("#core/".length).split("/")[0];
+  visit(ast);
+  return specs;
+}
+export function checkSource(file, source, root) {
+  const relative = path.relative(root, file).split(path.sep);
+  const [from, sub] = relative;
+  if (!(from in TOP)) return [];
+  const violations = [];
+  for (const spec of imports(source, file)) {
+    const target = spec.startsWith('#core/') ? path.join(root, 'core', spec.slice(6)) : spec.startsWith('.') ? path.resolve(path.dirname(file), spec) : null;
+    if (!target) {
+      if (from === 'core' && !file.endsWith('.test.ts')) violations.push(`core cannot import external dependency: ${spec}`);
+      continue;
     }
-    if (!target || !(target in CORE_ALLOWED) || target === sub) continue;
-
-    const key = `core/${sub} → core/${target}`;
-    edges.set(key, (edges.get(key) ?? 0) + 1);
-
-    if (!CORE_ALLOWED[sub].includes(target)) {
-      const line = source.slice(0, match.index).split("\n").length;
-      violations.push(`${path.relative(process.cwd(), file)}:${line}  core/${sub} 不能依赖 core/${target}（${spec}）`);
-    }
+    const [to, next] = path.relative(root, target).split(path.sep);
+    if (!(to in TOP)) { violations.push(`unknown or out-of-source dependency: ${spec}`); continue; }
+    if (to !== from && !TOP[from].includes(to)) violations.push(`${from} cannot import ${to}: ${spec}`);
+    if (from === 'core' && to === 'core' && next !== sub && !CORE[sub]?.includes(next)) violations.push(`core/${sub} cannot import core/${next}: ${spec}`);
   }
+  return violations;
 }
-
-const summary = [...edges.entries()].map(([k, n]) => `${k} ×${n}`).join("  ");
-console.log("依赖图：", summary || "(无跨层依赖)");
-
-if (violations.length > 0) {
-  console.error("\n依赖方向违规：");
-  for (const v of violations) console.error("  ✗ " + v);
-  process.exit(1);
+function walk(dir) {
+  return fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => e.isDirectory() ? walk(path.join(dir, e.name)) : /\.tsx?$/.test(e.name) ? [path.join(dir, e.name)] : []);
 }
-console.log("✓ 依赖方向正确：core ← content ← engine ← game ← render/ui");
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const root = fileURLToPath(new URL('../src', import.meta.url));
+  const violations = walk(root).flatMap(file => checkSource(file, fs.readFileSync(file, 'utf8'), root).map(v => `${path.relative(root, file)}: ${v}`));
+  if (violations.length) { console.error(violations.join('\n')); process.exitCode = 1; }
+  else console.log('Dependency boundaries passed: core <- engine <- render; kernel <- db <- ecs; agent -> kernel.');
+}

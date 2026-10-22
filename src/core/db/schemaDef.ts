@@ -26,7 +26,10 @@ const shapeRegistry = new Map<string, ShapeDef<Shape>>();
 
 export function defineShape<S extends Shape>(name: string, shape: S): ShapeDef<S> {
   const existing = shapeRegistry.get(name);
-  if (existing) return existing as unknown as ShapeDef<S>;
+  if (existing) {
+    assertSameShape(name, existing.shape, shape);
+    return existing as unknown as ShapeDef<S>;
+  }
   const validator = s.object(shape);
   const def: ShapeDef<S> = {
     name,
@@ -54,7 +57,11 @@ export function defineSchema<S extends Shape>(
   options: SchemaOptions = {},
 ): SchemaDef<S> {
   const existing = registry.get(name);
-  if (existing) return existing as unknown as SchemaDef<S>;
+  if (existing) {
+    assertSameShape(name, existing.shape, shape);
+    if (existing.version !== (options.version ?? 1)) throw new Error(`Conflicting schema version: ${name}`);
+    return existing as unknown as SchemaDef<S>;
+  }
 
   const key = keyFieldOf(shape);
   const validator = s.object(shape);
@@ -85,4 +92,13 @@ export function getSchema(name: string): SchemaDef<Shape> | undefined {
 
 export function schemaNames(): string[] {
   return [...registry.keys()];
+}
+
+// Validators may contain arbitrary predicates/default factories, so semantic equality
+// cannot be inferred safely. Reuse the original validators for idempotent registration.
+function assertSameShape(name: string, existing: Shape, next: Shape): void {
+  const keys = Object.keys(existing);
+  if (keys.length !== Object.keys(next).length || keys.some((key) => existing[key] !== next[key])) {
+    throw new Error(`Conflicting schema definition: ${name}; reuse the original shape or choose a distinct name`);
+  }
 }

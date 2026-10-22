@@ -1,3 +1,4 @@
+import type { AssetCatalog } from "../assets/manifest.ts";
 import { WebAudioPlayer } from "./webAudio.ts";
 
 /**
@@ -33,9 +34,9 @@ export const silentAudio: AudioPort = {
 };
 
 /** 优先真实现；AudioContext 建不起来（无 WebAudio / headless）就退回静音 */
-export function createAudio(): AudioPort {
+export function createAudio(assets?: AssetCatalog): AudioPort {
   try {
-    return new WebAudioPlayer();
+    return new WebAudioPlayer(assets);
   } catch (err) {
     console.warn("[audio] WebAudio 不可用，退回静音实现", err);
     return silentAudio;

@@ -1,4 +1,4 @@
-import type { EventBus } from "#core/kernel/index.ts";
+import type { EventBus } from "../../kernel/index.ts";
 import { Popped, Pushed, Transitioned } from "./events.ts";
 
 export type StateId = string;

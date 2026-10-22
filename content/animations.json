@@ -1,3 +1,0 @@
-[
-  { "id": "enemy.melee.idle", "sheet": "pulse", "frames": [0, 1, 2, 1], "fps": 6, "loop": true }
-]

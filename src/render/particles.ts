@@ -1,6 +1,5 @@
 import { Container, Sprite, type Texture } from "pixi.js";
-import { makeRng } from "#core/kernel/index.ts";
-import { getTexture } from "./assets.ts";
+import { makeRng } from "../core/kernel/index.ts";
 
 export type EmitOptions = {
   color: number;
@@ -28,8 +27,6 @@ type Particle = {
   active: boolean;
 };
 
-const MAX = 512;
-const SPARK = "fx.spark";
 
 /**
  * 粒子：纹理 + 对象池的 Sprite。
@@ -41,7 +38,17 @@ export class Particles {
   readonly view = new Container();
   private pool: Particle[] = [];
   private rng = makeRng(0x9e3779b9);
-  private texture: Texture | null = null;
+  private texture: Texture;
+  private capacity: number;
+  private disposed = false;
+
+  /** Texture remains caller-owned; disposing particles does not destroy it. */
+  constructor(texture: Texture, capacity = 512, seed = 0x9e3779b9) {
+    if (!Number.isSafeInteger(capacity) || capacity < 0) throw new RangeError("Invalid particle capacity");
+    this.texture = texture;
+    this.capacity = capacity;
+    this.rng = makeRng(seed);
+  }
 
   get count(): number {
     let n = 0;
@@ -50,11 +57,16 @@ export class Particles {
   }
 
   emit(x: number, y: number, count: number, options: EmitOptions): void {
+    if (this.disposed) throw new Error("Particles are disposed");
+    if (!Number.isSafeInteger(count) || count < 0) throw new RangeError("Invalid particle count");
     const speed = options.speed ?? 160;
     const size = options.size ?? 4;
     const life = options.life ?? 0.45;
     const gravity = options.gravity ?? 0;
     const drag = options.drag ?? 3;
+    if (![x, y, speed, size, life, gravity, drag].every(Number.isFinite) || size <= 0 || life <= 0 || drag < 0) {
+      throw new RangeError("Invalid particle options");
+    }
 
     for (let i = 0; i < count; i++) {
       const p = this.take();
@@ -82,6 +94,7 @@ export class Particles {
   }
 
   update(dt: number): void {
+    if (!Number.isFinite(dt) || dt < 0) throw new RangeError("Invalid particle delta");
     for (const p of this.pool) {
       if (!p.active) continue;
 
@@ -113,12 +126,16 @@ export class Particles {
     }
   }
 
+  dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.pool = [];
+    this.view.destroy({ children: true });
+  }
+
   private take(): Particle | null {
     for (const p of this.pool) if (!p.active) return p;
-    if (this.pool.length >= MAX) return null;
-
-    this.texture ??= getTexture(SPARK);
-    if (!this.texture) return null;
+    if (this.pool.length >= this.capacity) return null;
 
     const sprite = new Sprite(this.texture);
     sprite.anchor.set(0.5);

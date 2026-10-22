@@ -1,38 +1,38 @@
 {
   "name": "cbb",
   "private": true,
-  "version": "0.0.1",
+  "version": "0.1.0",
   "type": "module",
-  "imports": {
-    "#core/*": "./src/core/*",
-    "#content/*": "./src/content/*"
-  },
   "scripts": {
-    "dev": "vite",
     "test:core": "node --test 'src/core/**/*.test.ts'",
-    "test:game": "node --test 'src/game/**/*.test.ts'",
-    "test:all": "pnpm check:core && pnpm test:core && pnpm test:game",
+    "test": "node --test 'src/**/*.test.ts' 'scripts/**/*.test.mjs'",
+    "test:all": "pnpm check:core && pnpm test && pnpm typecheck && pnpm build && pnpm sample",
     "check:core": "node scripts/check-deps.mjs",
     "typecheck": "tsc --noEmit",
-    "build": "tsc -b && vite build",
-    "preview": "vite preview",
-    "tauri": "tauri"
+    "build": "node scripts/build.mjs",
+    "sample": "node examples/headless.ts"
   },
   "dependencies": {
-    "@gsap/react": "^2.1.2",
-    "gsap": "^3.15.0",
-    "pixi.js": "^8.22.0",
-    "react": "^19.3.1",
-    "react-dom": "^19.3.1"
+    "pixi.js": "^8.22.0"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.1.14",
-    "@types/node": "^26.6.5",
-    "@types/react": "^19.2.0",
-    "@types/react-dom": "^19.2.0",
-    "@vitejs/plugin-react": "^5.1.0",
-    "tailwindcss": "^4.1.14",
-    "typescript": "^5.9.3",
-    "vite": "^7.1.9"
-  }
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.3"
+  },
+  "description": "Composable lightweight TypeScript game framework",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "packageManager": "pnpm@10.11.0",
+  "exports": {
+    ".": "./dist/index.js",
+    "./core/*": "./dist/core/*/index.js",
+    "./engine/*": "./dist/engine/*/index.js",
+    "./render": "./dist/render/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "docs"
+  ]
 }

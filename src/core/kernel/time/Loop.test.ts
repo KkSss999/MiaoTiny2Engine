@@ -77,3 +77,14 @@ test("alpha 永远落在 [0, 1)", () => {
     assert.ok(tick.alpha >= 0 && tick.alpha < 1, `alpha=${tick.alpha}`);
   }
 });
+
+test("overflow drops whole steps but preserves interpolation remainder", () => {
+  const l = loop(2); const tick = l.advance(55);
+  assert.equal(tick.steps, 2); assert.equal(tick.alpha, 0.5); assert.equal(l.droppedSteps, 3);
+  assert.equal(l.advance(5).steps, 1);
+});
+test("invalid timing values fail before corrupting the clock", () => {
+  assert.throws(() => new Loop(0)); assert.throws(() => new Loop(10, 0));
+  const l = loop(); assert.throws(() => l.advance(NaN)); assert.throws(() => l.advance(Infinity));
+  assert.equal(l.advance(10).steps, 1);
+});

@@ -23,7 +23,12 @@ export function defineComponent<T>(
   shape?: ShapeDef,
 ): ComponentType<T> {
   const existing = byName.get(name);
-  if (existing) return existing as ComponentType<T>;
+  if (existing) {
+    if (existing.create !== create || existing.shape !== shape) {
+      throw new Error(`Component name already registered with a different definition: ${name}`);
+    }
+    return existing as ComponentType<T>;
+  }
   const type: ComponentType<T> = { id: nextComponentId++, name, create, shape };
   byName.set(name, type as ComponentType<unknown>);
   byId[type.id] = type as ComponentType<unknown>;
